@@ -1,0 +1,14 @@
+{
+  "name": "gmlewis/flate",
+  "version": "0.1.0",
+  "deps": {},
+  "readme": "README.md",
+  "repository": "https://github.com/gmlewis/moonbit-flate",
+  "license": "Apache-2.0",
+  "keywords": [
+    "flate",
+    "algorithm",
+    "moonbit"
+  ],
+  "description": "MoonBit flate: provide simple flate compression algorithm."
+}
