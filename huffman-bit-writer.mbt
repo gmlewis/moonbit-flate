@@ -209,10 +209,10 @@ fn write_block_huff(self: HuffmanBitWriter, eof : Bool, input : Bytes, len: Int)
 	// the literal_encoding and the offsetEncoding.
 	self.generate_codegen(num_literals, num_offsets, self.literal_encoding, huff_offset)
 	self.codegen_encoding.generate(self.codegen_freq[:], 7)
-	size, num_codegens = self.dynamic_size(self.literal_encoding, huff_offset, 0)
+	let (size, num_codegens) = self.dynamic_size(self.literal_encoding, huff_offset, 0)
 
 	// Store bytes, if we don't get a reasonable improvement.
-	ssize, storable = self.storedSize(input)
+	let (ssize, storable) = self.storedSize(input)
   if storable && ssize < (size+size>>4) {
 		self.writeStoredHeader(len(input), eof)
 		self.writeBytes(input)

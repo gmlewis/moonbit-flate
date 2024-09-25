@@ -7,8 +7,8 @@
 
 struct HuffmanEncoder {
   codes : Array[HCode]
-  freqcache : Array[LiteralNode]
-  bit_count : FixedArray[Int] // [17]int32
+  mut freqcache : Array[LiteralNode]
+  bit_count : FixedArray[Int] // [17]Int
   // lns       : byLiteral // stored to avoid repeated allocation in generate
   // lfs       : byFreq    // stored to avoid repeated allocation in generate
 } derive(Show, Eq)
@@ -22,14 +22,255 @@ fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
 
 struct LiteralNode {
   literal : UInt // uint16
-  freq : UInt
+  freq : Int
 } derive(Show, Eq)
 
 // HCode is a huffman code with a bit code and bit length.
 struct HCode {
-  code : UInt
-  len : UInt
+  mut code : UInt
+  mut len : UInt
 } derive(Show, Eq)
+
+// A levelInfo describes the state of the constructed tree for a given depth.
+struct LevelInfo {
+  // Our level.  for better printing
+  level : Int
+
+  // The frequency of the last node at this level
+  mut last_freq : Int
+
+  // The frequency of the next character to add to this level
+  mut next_char_freq : Int
+
+  // The frequency of the next pair (from level below) to add to this level.
+  // Only valid if the "needed" value of the next lower level is 0.
+  mut next_pair_freq : Int
+
+  // The number of chains remaining to generate for this level before moving
+  // up to the next level
+  mut needed : Int
+}
+
+fn LevelInfo::new() -> LevelInfo {
+  { level: 0, last_freq: 0, next_char_freq: 0, next_pair_freq: 0, needed: 0 }
+}
+
+// set sets the code and length of an hcode.
+fn set(self : HCode, code : UInt, length : UInt) -> Unit {
+  self.len = length
+  self.code = code
+}
+
+fn max_node() -> LiteralNode {
+  { literal: @uint.max_value, freq: @int.max_value }
+}
+
+let max_bits_limit = 16
+
+// bit_counts computes the number of literals assigned to each bit size in the Huffman encoding.
+// It is only called when list.length >= 3.
+// The cases of 0, 1, and 2 literals are handled by special case code.
+//
+// list is an array of the literals with non-zero frequencies
+// and their associated frequencies. The array is in order of increasing
+// frequency and has as its last element a special element with frequency
+// MaxInt.
+//
+// max_bits is the maximum number of bits that should be used to encode any literal.
+// It must be less than 16.
+//
+// bit_counts returns an integer slice in which slice[i] indicates the number of literals
+// that should be encoded in i bits.
+fn bit_counts(
+  self : HuffmanEncoder,
+  list : ArrayView[LiteralNode],
+  max_bits : Int
+) -> ArrayView[Int] {
+  if max_bits >= max_bits_limit {
+    abort("flate: max_bits too large")
+  }
+  let n = list.length()
+  let list = list[0:n + 1]
+  list[n] = max_node()
+
+  // The tree can't have greater depth than n - 1, no matter what. This
+  // saves a little bit of work in some small cases
+  let mut max_bits = max_bits
+  if max_bits > n - 1 {
+    max_bits = n - 1
+  }
+
+  // Create information about each of the levels.
+  // A bogus "Level 0" whose sole purpose is so that
+  // level1.prev.needed==0.  This makes level1.next_pair_freq
+  // be a legitimate value that never gets chosen.
+  let levels = FixedArray::make(max_bits_limit, LevelInfo::new()) // [max_bits_limit]levelInfo
+  // leaf_counts[i] counts the number of literals at the left
+  // of ancestors of the rightmost node at level i.
+  // leaf_counts[i][j] is the number of literals at the left
+  // of the level j ancestor.
+  let leaf_counts = FixedArray::make(
+    max_bits_limit,
+    FixedArray::make(max_bits_limit, 0),
+  ) // [max_bits_limit][max_bits_limit]Int
+  for level = 1; level <= max_bits; level = level + 1 {
+    // For every level, the first two items are the first two characters.
+    // We initialize the levels as if we had already figured this out.
+    levels[level] = {
+      level,
+      last_freq: list[1].freq,
+      next_char_freq: list[2].freq,
+      next_pair_freq: list[0].freq + list[1].freq,
+      needed: 0,
+    }
+    leaf_counts[level][level] = 2
+    if level == 1 {
+      levels[level].next_pair_freq = @int.max_value
+    }
+  }
+
+  // We need a total of 2*n - 2 items at top level and have already generated 2.
+  levels[max_bits].needed = 2 * n - 4
+  let mut level = max_bits
+  for {
+    let l = levels[level]
+    if l.next_pair_freq == @int.max_value && l.next_char_freq == @int.max_value {
+      // We've run out of both leafs and pairs.
+      // End all calculations for this level.
+      // To make sure we never come back to this level or any lower level,
+      // set next_pair_freq impossibly large.
+      l.needed = 0
+      levels[level + 1].next_pair_freq = @int.max_value
+      level += 1
+      continue
+    }
+    let prev_freq = l.last_freq
+    if l.next_char_freq < l.next_pair_freq {
+      // The next item on this row is a leaf node.
+      let n = leaf_counts[level][level] + 1
+      l.last_freq = l.next_char_freq
+      // Lower leaf_counts are the same of the previous node.
+      leaf_counts[level][level] = n
+      l.next_char_freq = list[n].freq
+    } else {
+      // The next item on this row is a pair from the previous row.
+      // next_pair_freq isn't valid until we generate two
+      // more values in the level below
+      l.last_freq = l.next_pair_freq
+      // Take leaf counts from the lower level, except counts[level] remains the same.
+      copy(leaf_counts[level][:level], leaf_counts[level - 1][:level])
+      levels[l.level - 1].needed = 2
+    }
+    l.needed -= 1
+    if l.needed == 0 {
+      // We've done everything we need to do for this level.
+      // Continue calculating one level up. Fill in next_pair_freq
+      // of that level with the sum of the two nodes we've just calculated on
+      // this level.
+      if l.level == max_bits {
+        // All done!
+        break
+      }
+      levels[l.level + 1].next_pair_freq = prev_freq + l.last_freq
+      level += 1
+    } else {
+      // If we stole from below, move down temporarily to replenish it.
+      while levels[level - 1].needed > 0 {
+        level -= 1
+      }
+    }
+  }
+
+  // Somethings is wrong if at the end, the top level is null or hasn't used
+  // all of the leaves.
+  if leaf_counts[max_bits][max_bits] != n {
+    abort("leaf_counts[max_bits][max_bits] != n")
+  }
+  let bit_count = self.bit_count[:max_bits + 1]
+  let mut bits = 1
+  let counts = leaf_counts[max_bits]
+  for level = max_bits; level > 0; level = level - 1 {
+    // chain.leafCount gives the number of literals requiring at least "bits"
+    // bits to encode.
+    bit_count[bits] = counts[level] - counts[level - 1]
+    bits += 1
+  }
+  bit_count
+}
+
+// Look at the leaves and assign them a bit count and an encoding as specified
+// in RFC 1951 3.2.2
+fn assign_encoding_and_size(self: HuffmanEncoder, bit_count []Int, list []literalNode) {
+	code := uint16(0)
+	for n, bits := range bit_count {
+		code <<= 1
+		if n == 0 || bits == 0 {
+			continue
+		}
+		// The literals list[len(list)-bits] .. list[len(list)-bits]
+		// are encoded using "bits" bits, and get the values
+		// code, code + 1, ....  The code values are
+		// assigned in literal order (not frequency order).
+		chunk := list[len(list)-int(bits):]
+
+		h.lns.sort(chunk)
+		for _, node := range chunk {
+			h.codes[node.literal] = hcode{code: reverseBits(code, uint8(n)), len: uint16(n)}
+			code++
+		}
+		list = list[0 : len(list)-int(bits)]
+	}
+}
+
+fn generate(self : HuffmanEncoder, freq : Array[Int], max_bits : Int) -> Unit {
+  if self.freqcache.length() == 0 {
+    // Allocate a reusable buffer with the longest possible frequency table.
+    // Possible lengths are codegenCodeCount, offsetCodeCount and max_num_lit.
+    // The largest of these is max_num_lit, so we allocate for that case.
+    self.freqcache = Array::make(max_num_lit + 1, { literal: 0, freq: 0 })
+  }
+  let mut list = self.freqcache[:freq.length() + 1]
+  // Number of non-zero literals
+  let mut count = 0
+  // Set list to be the set of all non-zero literals and their frequencies
+  for i, f in freq {
+    if f != 0 {
+      list[count] = {
+        literal: i.reinterpret_as_uint(),
+        freq: f.reinterpret_as_uint(),
+      }
+      count += 1
+    } else {
+      self.codes[i].len = 0
+    }
+  }
+  list = list[:count]
+  if count <= 2 {
+    // Handle the small cases here, because they are awkward for the general case code. With
+    // two or fewer literals, everything has bit length 1.
+    for i, node in list {
+      // "list" is in order of increasing literal value.
+      self.codes[node.literal.reinterpret_as_int()] = {
+        code: i.reinterpret_as_uint(),
+        len: 1,
+      }
+    }
+    return
+  }
+  quick_sort_by(list, by_frequency, None, get_limit(list.length()))
+
+  // Get the number of literals for each bit count
+  let bit_count = self.bit_counts(list, max_bits)
+  // And do the assignment
+  self.assign_encoding_and_size(bit_count, list)
+}
+
+fn by_frequency(a : LiteralNode, b : LiteralNode) -> Int {
+  if a.freq == b.freq {
+    return a.literal.reinterpret_as_int() - b.literal.reinterpret_as_int()
+  }
+  return a.freq - b.freq
+}
 
 let fixed_literal_encoding : Array[HCode] = [
   { code: 12, len: 8 },
