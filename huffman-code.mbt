@@ -8,7 +8,8 @@
 struct HuffmanEncoder {
   codes : Array[HCode]
   mut freqcache : Array[LiteralNode]
-  bit_count : FixedArray[Int] // [17]Int
+  // bit_count : FixedArray[Int] // [17]Int
+  bit_count : Array[Int] // [17]Int
   // lns       : byLiteral // stored to avoid repeated allocation in generate
   // lfs       : byFreq    // stored to avoid repeated allocation in generate
 } derive(Show, Eq)
@@ -16,7 +17,8 @@ struct HuffmanEncoder {
 fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
   let codes = Array::make(size, { code: 0U, len: 0U })
   let freqcache = []
-  let bit_count = FixedArray::make(17, 0)
+  // let bit_count = FixedArray::make(17, 0)
+  let bit_count = Array::make(17, 0)
   { codes, freqcache, bit_count }
 }
 
@@ -158,7 +160,10 @@ fn bit_counts(
       // more values in the level below
       l.last_freq = l.next_pair_freq
       // Take leaf counts from the lower level, except counts[level] remains the same.
-      copy(leaf_counts[level][:level], leaf_counts[level - 1][:level])
+      // copy(leaf_counts[level][:level], leaf_counts[level - 1][:level])
+      for i in 0..<level {
+        leaf_counts[level][i] = leaf_counts[level - 1][i]
+      }
       levels[l.level - 1].needed = 2
     }
     l.needed -= 1
@@ -186,6 +191,7 @@ fn bit_counts(
   if leaf_counts[max_bits][max_bits] != n {
     abort("leaf_counts[max_bits][max_bits] != n")
   }
+  // 	bitCount := h.bitCount[:maxBits+1]
   let bit_count = self.bit_count[:max_bits + 1]
   let mut bits = 1
   let counts = leaf_counts[max_bits]
@@ -195,31 +201,43 @@ fn bit_counts(
     bit_count[bits] = counts[level] - counts[level - 1]
     bits += 1
   }
-  bit_count
+  bit_count[:]
 }
 
 // Look at the leaves and assign them a bit count and an encoding as specified
 // in RFC 1951 3.2.2
-fn assign_encoding_and_size(self: HuffmanEncoder, bit_count []Int, list []literalNode) {
-	code := uint16(0)
-	for n, bits := range bit_count {
-		code <<= 1
-		if n == 0 || bits == 0 {
-			continue
-		}
-		// The literals list[len(list)-bits] .. list[len(list)-bits]
-		// are encoded using "bits" bits, and get the values
-		// code, code + 1, ....  The code values are
-		// assigned in literal order (not frequency order).
-		chunk := list[len(list)-int(bits):]
+fn assign_encoding_and_size(
+  self : HuffmanEncoder,
+  bit_count : ArrayView[Int],
+  list : ArrayView[LiteralNode]
+) -> Unit {
+  let mut list = list
+  let mut code = 0
+  // for n, bits := range bit_count {
+  for n, bits in bit_count {
+    code = code << 1
+    if n == 0 || bits == 0 {
+      continue
+    }
+    // The literals list[len(list)-bits] .. list[len(list)-bits]
+    // are encoded using "bits" bits, and get the values
+    // code, code + 1, ....  The code values are
+    // assigned in literal order (not frequency order).
+    let chunk = list[list.length() - bits:]
+    quick_sort_by(chunk, by_literal, None, get_limit(chunk.length()))
+    for node in chunk {
+      self.codes[node.literal.reinterpret_as_int()] = {
+        code: reverse_bits(code.reinterpret_as_uint(), n.to_byte()),
+        len: n.reinterpret_as_uint(),
+      }
+      code += 1
+    }
+    list = list[0:list.length() - bits]
+  }
+}
 
-		h.lns.sort(chunk)
-		for _, node := range chunk {
-			h.codes[node.literal] = hcode{code: reverseBits(code, uint8(n)), len: uint16(n)}
-			code++
-		}
-		list = list[0 : len(list)-int(bits)]
-	}
+fn reverse_bits(number : UInt, bit_length : Byte) -> UInt {
+  return reverse16(number << (16 - bit_length.to_int()))
 }
 
 fn generate(self : HuffmanEncoder, freq : Array[Int], max_bits : Int) -> Unit {
@@ -235,10 +253,7 @@ fn generate(self : HuffmanEncoder, freq : Array[Int], max_bits : Int) -> Unit {
   // Set list to be the set of all non-zero literals and their frequencies
   for i, f in freq {
     if f != 0 {
-      list[count] = {
-        literal: i.reinterpret_as_uint(),
-        freq: f.reinterpret_as_uint(),
-      }
+      list[count] = { literal: i.reinterpret_as_uint(), freq: f }
       count += 1
     } else {
       self.codes[i].len = 0
@@ -270,6 +285,10 @@ fn by_frequency(a : LiteralNode, b : LiteralNode) -> Int {
     return a.literal.reinterpret_as_int() - b.literal.reinterpret_as_int()
   }
   return a.freq - b.freq
+}
+
+fn by_literal(a : LiteralNode, b : LiteralNode) -> Int {
+  return a.literal.reinterpret_as_int() - b.literal.reinterpret_as_int()
 }
 
 let fixed_literal_encoding : Array[HCode] = [
