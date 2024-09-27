@@ -30,6 +30,33 @@ let buffer_flush_size = 240
 // which can contain up to 8 bytes.
 let buffer_size : Int = buffer_flush_size + 8
 
+// The number of extra bits needed by length code X - LENGTH_CODES_START.
+let length_extra_bits : Array[Int] = [
+  0, 0, 0, // /* 257 */
+   0, 0, 0, 0, 0, 1, 1, 1, 1, 2, // /* 260 */
+   2, 2, 2, 3, 3, 3, 3, 4, 4, 4, // /* 270 */
+   4, 5, 5, 5, 5, 0, // /* 280 */
+]
+
+// The length indicated by length code X - LENGTH_CODES_START.
+let length_base : Array[UInt] = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80,
+  96, 112, 128, 160, 192, 224, 255,
+]
+
+// offset code word extra bits.
+let offset_extra_bits : Array[Int] = [
+  0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
+  12, 12, 13, 13,
+]
+
+let offset_base : Array[UInt] = [
+  0x000000, 0x000001, 0x000002, 0x000003, 0x000004, 0x000006, 0x000008, 0x00000c,
+  0x000010, 0x000018, 0x000020, 0x000030, 0x000040, 0x000060, 0x000080, 0x0000c0,
+  0x000100, 0x000180, 0x000200, 0x000300, 0x000400, 0x000600, 0x000800, 0x000c00,
+  0x001000, 0x001800, 0x002000, 0x003000, 0x004000, 0x006000,
+]
+
 // The odd order in which the codegen code sizes are written.
 let codegen_order : Array[Int] = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
@@ -185,8 +212,8 @@ fn write_bytes(self : HuffmanBitWriter, bytes : Bytes) -> Unit {
 // Codes 0-15 are single byte codes. Codes 16-18 are followed by additional
 // information. Code bad_code is an end marker
 //
-//	num_literals      The number of literals in literalEncoding
-//	num_offsets       The number of offsets in offsetEncoding
+//	num_literals      The number of literals in literal_encoding
+//	num_offsets       The number of offsets in offset_encoding
 //	litenc, offenc   The literal and offset encoder to use
 fn generate_codegen(
   self : HuffmanBitWriter,
@@ -301,7 +328,7 @@ fn dynamic_size(
     self.codegen_freq[16] * 2 +
     self.codegen_freq[17] * 3 +
     self.codegen_freq[18] * 7
-  let mut size = header +
+  let size = header +
     lit_enc.bit_length(self.literal_freq[:]) +
     off_enc.bit_length(self.offset_freq[:]) +
     extra_bits
@@ -319,12 +346,12 @@ fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
 // stored_size calculates the stored size, including header.
 // The function returns the size in bits and whether the block
 // fits inside a single block.
-fn stored_size(self : HuffmanBitWriter, inp : Array[Byte]) -> (Int, Bool) {
-  if inp.length() == 0 {
+fn stored_size(inp_length : Int) -> (Int, Bool) {
+  if inp_length == 0 {
     return (0, false)
   }
-  if inp.length() <= max_store_block_size {
-    return ((inp.length() + 5) * 8, true)
+  if inp_length <= max_store_block_size {
+    return ((inp_length + 5) * 8, true)
   }
   (0, false)
 }
@@ -408,6 +435,7 @@ fn write_dynamic_header(
         self.write_bits(self.codegen[i].to_int(), 7)
         i += 1
       }
+      _ => ()
     }
   }
 }
@@ -455,10 +483,10 @@ fn write_block_huff(
 
   // Figure out smallest code.
   // Always use dynamic Huffman or Store
-  let mut num_codegens = 0
+  // let num_codegens = 0
 
   // Generate codegen and codegen_frequencies, which indicates how to encode
-  // the literal_encoding and the offsetEncoding.
+  // the literal_encoding and the offset_encoding.
   self.generate_codegen(
     num_literals,
     num_offsets,
@@ -473,7 +501,7 @@ fn write_block_huff(
   )
 
   // Store bytes, if we don't get a reasonable improvement.
-  let (ssize, storable) = self.stored_size(Array::from_iter(input.iter())) // performance hit?
+  let (ssize, storable) = stored_size(input.length())
   if storable && ssize < ((size + size) >> 4) {
     self.write_stored_header(input.length(), eof)
     self.write_bytes(input)
@@ -518,6 +546,137 @@ fn write_block_huff(
   }
   self.nbytes = n
   self.write_code(encoding[end_block_marker])
+}
+
+// write_block_dynamic encodes a block using a dynamic Huffman table.
+// This should be used if the symbols used have a disproportionate
+// histogram distribution.
+// If input is supplied and the compression savings are below 1/16th of the
+// input size the block is stored.
+fn write_block_dynamic(
+  self : HuffmanBitWriter,
+  tokens : Array[Token],
+  eof : Bool,
+  input : Bytes
+) -> Unit {
+  if not(self.err.is_empty()) {
+    return
+  }
+  tokens.push(end_block_marker.reinterpret_as_uint())
+  let (num_literals, num_offsets) = self.index_tokens(tokens)
+
+  // Generate codegen and codegen_frequencies, which indicates how to encode
+  // the literal_encoding and the offset_encoding.
+  self.generate_codegen(
+    num_literals,
+    num_offsets,
+    self.literal_encoding,
+    self.offset_encoding,
+  )
+  self.codegen_encoding.generate(self.codegen_freq[:], 7)
+  let (size, numCodegens) = self.dynamic_size(
+    self.literal_encoding,
+    self.offset_encoding,
+    0,
+  )
+
+  // Store bytes, if we don't get a reasonable improvement.
+  let (ssize, storable) = stored_size(input.length())
+  if storable && ssize < ((size + size) >> 4) {
+    self.write_stored_header(input.length(), eof)
+    self.write_bytes(input)
+    return
+  }
+
+  // Write Huffman table.
+  self.write_dynamic_header(num_literals, num_offsets, numCodegens, eof)
+
+  // Write the tokens.
+  self.write_tokens(
+    tokens,
+    self.literal_encoding.codes,
+    self.offset_encoding.codes,
+  )
+}
+
+// index_tokens indexes a slice of tokens, and updates
+// literal_freq and offset_freq, and generates literal_encoding
+// and offset_encoding.
+// The number of literal and offset tokens is returned.
+fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
+  for i in self.literal_freq {
+    self.literal_freq[i] = 0
+  }
+  for i in self.offset_freq {
+    self.offset_freq[i] = 0
+  }
+  for t in tokens {
+    if t._ < match_type {
+      self.literal_freq[t.literal().reinterpret_as_int()] += 1
+      continue
+    }
+    let length = t.length().reinterpret_as_int()
+    let offset = t.offset().reinterpret_as_int()
+    self.literal_freq[length_codes_start + length_code(length)] += 1
+    self.offset_freq[offset_code(offset)] += 1
+  }
+
+  // get the number of literals
+  let mut num_literals = self.literal_freq.length()
+  while self.literal_freq[num_literals - 1] == 0 {
+    num_literals -= 1
+  }
+  // get the number of offsets
+  let mut num_offsets = self.offset_freq.length()
+  while num_offsets > 0 && self.offset_freq[num_offsets - 1] == 0 {
+    num_offsets -= 1
+  }
+  if num_offsets == 0 {
+    // We haven't found a single match. If we want to go with the dynamic encoding,
+    // we should count at least one offset to be sure that the offset huffman tree could be encoded.
+    self.offset_freq[0] = 1
+    num_offsets = 1
+  }
+  self.literal_encoding.generate(self.literal_freq[:], 15)
+  self.offset_encoding.generate(self.offset_freq[:], 15)
+  (num_literals, num_offsets)
+}
+
+// write_tokens writes a slice of tokens to the output.
+// codes for literal and offset encoding must be supplied.
+fn write_tokens(
+  self : HuffmanBitWriter,
+  tokens : Array[Token],
+  le_codes : Array[HCode],
+  oe_codes : Array[HCode]
+) -> Unit {
+  if not(self.err.is_empty()) {
+    return
+  }
+  for t in tokens {
+    if t._ < match_type {
+      self.write_code(le_codes[t.literal().reinterpret_as_int()])
+      continue
+    }
+    // Write the length
+    let length = t.length().reinterpret_as_int()
+    let length_code = length_code(length)
+    self.write_code(le_codes[length_code + length_codes_start])
+    let extra_length_bits = length_extra_bits[length_code].reinterpret_as_uint()
+    if extra_length_bits > 0 {
+      let extra_length = length - length_base[length_code].reinterpret_as_int()
+      self.write_bits(extra_length, extra_length_bits)
+    }
+    // Write the offset
+    let offset = t.offset().reinterpret_as_int()
+    let offset_code = offset_code(offset)
+    self.write_code(oe_codes[offset_code])
+    let extra_offset_bits = offset_extra_bits[offset_code].reinterpret_as_uint()
+    if extra_offset_bits > 0 {
+      let extra_offset = offset - offset_base[offset_code].reinterpret_as_int()
+      self.write_bits(extra_offset, extra_offset_bits)
+    }
+  }
 }
 
 // histogram accumulates a histogram of b in h.

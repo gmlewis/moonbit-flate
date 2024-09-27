@@ -5,13 +5,13 @@
 /// Use of this source code is governed by a BSD-style
 /// license that can be found in the LICENSE file.
 
-let max_code_len = 16 // max length of Huffman code
+// let max_code_len = 16 // max length of Huffman code
 // The next three numbers come from the RFC section 3.2.7, with the
 // additional proviso in section 3.2.5 which implies that distance codes
 // 30 and 31 should never occur in compressed data.
 
 let max_num_lit = 286
 
-let max_num_dist = 30
+// let max_num_dist = 30
 
-let num_codes = 19 // number of codes in Huffman meta-code
+// let num_codes = 19 // number of codes in Huffman meta-code

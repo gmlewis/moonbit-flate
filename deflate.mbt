@@ -79,6 +79,16 @@ fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
   return self.w.err
 }
 
+fn fill_store(self : Compressor, b : ArrayView[Byte]) -> Int {
+  let n = b.length()
+  // let n = copy(self.window[self.window_end:], b)
+  for i in 0..<n {
+    self.window[self.window_end + i] = b[i]
+  }
+  self.window_end += n
+  n
+}
+
 // encSpeed will compress and store the currently added data,
 // if enough has been accumulated or we at the end of the stream.
 // Any error that occurred will be in self.err
@@ -106,17 +116,16 @@ fn enc_speed(self : Compressor) -> Unit {
     }
   }
   // Encode the block.
-  self.tokens = self.best_speed.encode(
-    self.tokens[:0],
-    self.window,
-    self.window_end,
-  )
+  // self.tokens = self.best_speed.encode([], self.window[:self.window_end])
+  let b = Bytes::from_iter(self.window.iter().take(self.window_end))
+  self.tokens = self.best_speed.encode([], b)
 
   // If we removed less than 1/16th, Huffman compress the block.
   if self.tokens.length() > self.window_end - (self.window_end >> 4) {
     self.w.write_block_huff(false, self.window, self.window_end)
   } else {
-    self.w.write_block_dynamic(self.tokens, false, self.window, self.window_end)
+    // self.w.write_block_dynamic(self.tokens, false, self.window[:self.window_end])
+    self.w.write_block_dynamic(self.tokens, false, b)
   }
   self.err = self.w.err
   self.window_end = 0
@@ -126,10 +135,11 @@ pub fn write(self : Compressor, b : Bytes) -> Int!Error {
   if not(self.err.is_empty()) {
     raise self.err.unwrap()
   }
+  let mut b : ArrayView[Byte] = Array::from_iter(b.iter())[:]
   let n = b.length()
   while b.length() > 0 {
-    self.enc_speed(d)
-    b = b[self.fill_store(d, b):]
+    self.enc_speed()
+    b = b[self.fill_store(b):]
     if not(self.err.is_empty()) {
       raise self.err.unwrap()
     }
