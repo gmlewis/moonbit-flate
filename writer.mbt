@@ -13,3 +13,7 @@ pub fn Writer::new(buf : Buffer) -> Writer {
 pub fn write(self : Writer, data : Bytes) -> Int!Error {
   self.d.write!(data)
 }
+
+pub fn close(self : Writer) -> Unit!Error {
+  self.d.close!()
+}

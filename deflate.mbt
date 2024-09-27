@@ -64,6 +64,33 @@ fn Compressor::new(buf : Buffer) -> Compressor {
   }
 }
 
+type! WriterClosedError  derive(Show)
+
+fn close(self : Compressor) -> Unit!Error {
+  match self.err {
+    Some(WriterClosedError) => return
+    Some(err) => raise err
+    _ => ()
+  }
+  self.sync = true
+  self.enc_speed()
+  match self.err {
+    Some(err) => raise err
+    _ => ()
+  }
+  self.w.write_stored_header(0, true)
+  match self.w.err {
+    Some(err) => raise err
+    _ => ()
+  }
+  self.w.flush()
+  match self.w.err {
+    Some(err) => raise err
+    _ => ()
+  }
+  self.err = Some(WriterClosedError)
+}
+
 fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
   self.w.write_stored_header(len, false)
   if not(self.w.err.is_empty()) {

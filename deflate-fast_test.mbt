@@ -56,8 +56,9 @@ test "TestBestSpeed" {
         // }
         // w.flush!()
       }
-      // w.close!()
+      w.close!()
 
+      //
       let got = buf.to_bytes()
       assert_eq!(got, want.to_bytes())
     }
