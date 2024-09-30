@@ -20,22 +20,31 @@ let max_num_dist = 30
 
 let num_codes = 19 // number of codes in Huffman meta-code
 
-// // Initialize the fixedHuffmanDecoder only once upon first use.
+// // Initialize the fixed_huffman_decoder only once upon first use.
 // var fixedOnce sync.Once
-// var fixedHuffmanDecoder huffmanDecoder
+// var fixed_huffman_decoder huffmanDecoder
 
-// // A CorruptInputError reports the presence of corrupt input at a given offset.
-// type CorruptInputError int64
+/// A CorruptInputError reports the presence of corrupt input at a given offset.
+pub type! CorruptInputError Int64
 
-// func (e CorruptInputError) Error() string {
-// 	log.Printf("GML: inflate.go: (e CorruptInputError) Error() string {")
-// 	return "flate: corrupt input before offset " + strconv.FormatInt(int64(e), 10)
-// }
+impl Show for CorruptInputError with output(self, logger) {
+  logger.write_string("flate: corrupt input before offset \{self}")
+}
 
-// // An InternalError reports an error in the flate code itself.
-// type InternalError string
+fn to_string(self : CorruptInputError) -> String {
+  Show::to_string(self)
+}
 
-// func (e InternalError) Error() string { return "flate: internal error: " + string(e) }
+/// An InternalError reports an error in the flate code itself.
+pub type! InternalError String
+
+impl Show for InternalError with output(self, logger) {
+  logger.write_string("flate: internal error: \{self}")
+}
+
+fn to_string(self : InternalError) -> String {
+  Show::to_string(self)
+}
 
 // // A ReadError reports an error encountered while reading input.
 // //
@@ -255,7 +264,7 @@ struct HuffmanDecoder {
 // }
 
 // // The actual read interface needed by [NewReader].
-// // If the passed in io.Reader does not also have ReadByte,
+// // If the passed in io.Reader does not also have read_byte,
 // // the [NewReader] will introduce its own buffering.
 // type Reader interface {
 // 	io.Reader
@@ -267,11 +276,11 @@ struct Decompressor {
   // Input source.
   r : IOReader
   // rBuf    *bufio.Reader // created if provided io.Reader does not implement io.ByteReader
-  roffset : Int64
+  mut roffset : Int64
 
   // Input bits, in top of b.
-  b : UInt
-  nb : UInt
+  mut b : UInt
+  mut nb : UInt
 
   // Huffman decoders for literal/length, distance.
   h1 : HuffmanDecoder
@@ -294,10 +303,10 @@ struct Decompressor {
   mut final : Bool
   mut err : Error?
   mut to_read : ArrayView[Byte] // []byte
-  hl : HuffmanDecoder
-  hd : HuffmanDecoder
-  copy_len : Int
-  copy_dist : Int
+  mut hl : HuffmanDecoder
+  mut hd : HuffmanDecoder?
+  mut copy_len : Int
+  mut copy_dist : Int
 }
 
 type StepFunc (Decompressor) -> Unit
@@ -320,44 +329,47 @@ fn Decompressor::new(r : IOReader) -> Decompressor {
     err: None,
     to_read: [][:],
     hl: fixed_huffman_decoder,
-    hd: fixed_huffman_decoder,
+    hd: Some(fixed_huffman_decoder),
     copy_len: 0,
     copy_dist: 0,
   }
 }
 
 fn next_block(self : Decompressor) -> Unit {
-  // 	log.Printf("GML: inflate.go: (f *decompressor) next_block() {")
-  // 	for f.nb < 1+2 {
-  // 		if f.err = f.more_bits(); f.err != nil {
-  // 			return
-  // 		}
-  // 	}
-  // 	f.final = f.b&1 == 1
-  // 	f.b >>= 1
-  // 	typ := f.b & 3
-  // 	f.b >>= 2
-  // 	f.nb -= 1 + 2
-  // 	switch typ {
-  // 	case 0:
-  // 		f.data_block()
-  // 	case 1:
-  // 		// compressed, fixed Huffman tables
-  // 		f.hl = &fixedHuffmanDecoder
-  // 		f.hd = nil
-  // 		f.huffmanBlock()
-  // 	case 2:
-  // 		// compressed, dynamic Huffman tables
-  // 		if f.err = f.read_huffman(); f.err != nil {
-  // 			break
-  // 		}
-  // 		f.hl = &f.h1
-  // 		f.hd = &f.h2
-  // 		f.huffmanBlock()
-  // 	default:
-  // 		// 3 is reserved.
-  // 		f.err = CorruptInputError(f.roffset)
-  // 	}
+  while self.nb < 1U + 2 {
+    self.err = self.more_bits()
+    guard let None = self.err else { _ => return  }
+
+  }
+  self.final = (self.b & 1) == 1
+  self.b = self.b >> 1
+  let typ = self.b & 3
+  self.b = self.b >> 2
+  self.nb -= 1U + 2
+  match typ {
+    0 => self.data_block()
+    1 => {
+      // compressed, fixed Huffman tables
+      self.hl = fixed_huffman_decoder
+      self.hd = None
+      self.huffman_block()
+    }
+    2 => {
+      // compressed, dynamic Huffman tables
+      self.err = self.read_huffman()
+      match self.err {
+        None => {
+          self.hl = self.h1
+          self.hd = Some(self.h2)
+          self.huffman_block()
+        }
+        _ => ()
+      }
+    }
+    _ =>
+      // 3 is reserved.
+      self.err = Some(CorruptInputError(self.roffset))
+  }
 }
 
 fn read(self : Decompressor, b : Bytes) -> Int!Error {
@@ -388,8 +400,6 @@ fn read(self : Decompressor, b : Bytes) -> Int!Error {
   }
 }
 
-type! IOEOF  derive(Show)
-
 fn close(self : Decompressor) -> Unit!Error {
   match self.err {
     Some(IOEOF) => return
@@ -405,8 +415,8 @@ let code_order = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
-fn read_huffman(self : Decompressor) -> Unit!Error {
-  raise IOEOF
+fn read_huffman(self : Decompressor) -> Error? {
+  None
   // 	log.Printf("GML: inflate.go: (f *decompressor) read_huffman() error {")
   // 	// HLIT[5], HDIST[5], HCLEN[4].
   // 	for f.nb < 5+5+4 {
@@ -548,7 +558,7 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 			f.dict.writeByte(byte(v))
   // 			if f.dict.availWrite() == 0 {
   // 				f.to_read = f.dict.read_flush()
-  // 				f.step = (*decompressor).huffmanBlock
+  // 				f.step = (*decompressor).huffman_block
   // 				f.step_state = stateInit
   // 				return
   // 			}
@@ -655,7 +665,7 @@ fn huffman_block(self : Decompressor) -> Unit {
 
   // 		if f.dict.availWrite() == 0 || f.copy_len > 0 {
   // 			f.to_read = f.dict.read_flush()
-  // 			f.step = (*decompressor).huffmanBlock // We need to continue this work
+  // 			f.step = (*decompressor).huffman_block // We need to continue this work
   // 			f.step_state = stateDict
   // 			return
   // 		}
@@ -663,36 +673,37 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 	}
 }
 
-// // Copy a single uncompressed data block from input to output.
+// Copy a single uncompressed data block from input to output.
 fn data_block(self : Decompressor) -> Unit {
-  // 	log.Printf("GML: inflate.go: (f *decompressor) data_block() {")
-  // 	// Uncompressed.
-  // 	// Discard current half-byte.
-  // 	f.nb = 0
-  // 	f.b = 0
+  // Uncompressed.
+  // Discard current half-byte.
+  self.nb = 0
+  self.b = 0
 
-  // 	// Length then ones-complement of length.
-  // 	nr, err := io.ReadFull(f.r, f.buf[0:4])
-  // 	f.roffset += int64(nr)
-  // 	if err != nil {
-  // 		f.err = noEOF(err)
-  // 		return
-  // 	}
-  // 	n := int(f.buf[0]) | int(f.buf[1])<<8
-  // 	nn := int(f.buf[2]) | int(f.buf[3])<<8
-  // 	if uint16(nn) != uint16(^n) {
-  // 		f.err = CorruptInputError(f.roffset)
-  // 		return
-  // 	}
-
-  // 	if n == 0 {
-  // 		f.to_read = f.dict.read_flush()
-  // 		f.finish_block()
-  // 		return
-  // 	}
-
-  // 	f.copy_len = n
-  // 	f.copy_data()
+  // Length then ones-complement of length.
+  let nr = try {
+    self.r.read_full!(self.buf[0:4])
+  } catch {
+    err => {
+      self.err = Some(no_eof(err))
+      return
+    }
+  }
+  self.roffset += nr.to_int64()
+  let n = self.buf[0].to_int() | (self.buf[1].to_int() << 8)
+  let nn = self.buf[2].to_int() | (self.buf[3].to_int() << 8)
+  // if uint16(nn) != uint16(^n) {
+  if nn.reinterpret_as_uint() != n.reinterpret_as_uint().lnot() {
+    self.err = Some(CorruptInputError(self.roffset))
+    return
+  }
+  if n == 0 {
+    self.to_read = self.dict.read_flush()
+    self.finish_block()
+    return
+  }
+  self.copy_len = n
+  self.copy_data()
 }
 
 // // copy_data copies f.copy_len bytes from the underlying reader into f.hist.
@@ -709,7 +720,7 @@ fn copy_data(self : Decompressor) -> Unit {
   // 	f.copy_len -= cnt
   // 	f.dict.writeMark(cnt)
   // 	if err != nil {
-  // 		f.err = noEOF(err)
+  // 		f.err = no_eof(err)
   // 		return
   // 	}
 
@@ -727,31 +738,29 @@ fn finish_block(self : Decompressor) -> Unit {
   // 		if f.dict.availRead() > 0 {
   // 			f.to_read = f.dict.read_flush()
   // 		}
-  // 		f.err = io.EOF
+  // 		f.err = IOEOF
   // 	}
   // 	f.step = (*decompressor).next_block
-  // }
-
-  // // noEOF returns err, unless err == io.EOF, in which case it returns io.ErrUnexpectedEOF.
-  // func noEOF(e error) error {
-  // 	log.Printf("GML: inflate.go: noEOF(e error) error {")
-  // 	if e == io.EOF {
-  // 		return io.ErrUnexpectedEOF
-  // 	}
-  // 	return e
 }
 
-fn more_bits(self : Decompressor) -> Unit!Error {
-  raise IOEOF
-  // 	log.Printf("GML: inflate.go: (f *decompressor) more_bits() error {")
-  // 	c, err := f.r.ReadByte()
-  // 	if err != nil {
-  // 		return noEOF(err)
-  // 	}
-  // 	f.roffset++
-  // 	f.b |= uint32(c) << f.nb
-  // 	f.nb += 8
-  // 	return nil
+// no_eof returns err, unless err == IOEOF, in which case it returns IOErrUnexpectedEOF.
+fn no_eof(e : Error) -> Error {
+  match e {
+    IOEOF => return IOErrUnexpectedEOF
+    _ => e
+  }
+}
+
+fn more_bits(self : Decompressor) -> Error? {
+  let c = try {
+    self.r.read_byte!()
+  } catch {
+    err => return Some(err)
+  }
+  self.roffset += 1
+  self.b = self.b | (c.to_uint() << self.nb.reinterpret_as_int())
+  self.nb += 8
+  None
 }
 
 // // Read the next Huffman-encoded symbol from f according to h.
@@ -769,11 +778,11 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
   // 	nb, b := f.nb, f.b
   // 	for {
   // 		for nb < n {
-  // 			c, err := f.r.ReadByte()
+  // 			c, err := f.r.read_byte()
   // 			if err != nil {
   // 				f.b = b
   // 				f.nb = nb
-  // 				return 0, noEOF(err)
+  // 				return 0, no_eof(err)
   // 			}
   // 			f.roffset++
   // 			b |= uint32(c) << (nb & 31)
@@ -817,8 +826,8 @@ fn make_reader(self : Decompressor, r : IOReader) -> Unit {
   // 	f.r = f.rBuf
 }
 
-// func fixedHuffmanDecoderInit() {
-// 	log.Printf("GML: inflate.go: fixedHuffmanDecoderInit() {")
+// func fixed_huffman_decoderInit() {
+// 	log.Printf("GML: inflate.go: fixed_huffman_decoderInit() {")
 // 	fixedOnce.Do(func() {
 // 		// These come from the RFC section 3.2.6.
 // 		var bits [288]int
@@ -834,7 +843,7 @@ fn make_reader(self : Decompressor, r : IOReader) -> Unit {
 // 		for i := 280; i < 288; i++ {
 // 			bits[i] = 8
 // 		}
-// 		fixedHuffmanDecoder.init(bits[:])
+// 		fixed_huffman_decoder.init(bits[:])
 // 	})
 // }
 

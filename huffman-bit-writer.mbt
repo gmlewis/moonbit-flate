@@ -113,8 +113,6 @@ fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
   }
 }
 
-type! InternalError String derive(Show)
-
 fn flush(self : HuffmanBitWriter) -> Unit {
   if not(self.err.is_empty()) {
     self.nbits = 0
