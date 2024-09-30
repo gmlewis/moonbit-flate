@@ -300,11 +300,7 @@ struct Decompressor {
   copy_dist : Int
 }
 
-enum StepFunc {
-  NextBlock
-  HuffmanBlock
-  CopyData
-}
+type StepFunc (Decompressor) -> Unit
 
 fn Decompressor::new(r : IOReader) -> Decompressor {
   {
@@ -318,7 +314,7 @@ fn Decompressor::new(r : IOReader) -> Decompressor {
     codebits: Array::make(num_codes, 0),
     dict: DictDecoder::new(max_match_offset),
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
-    step: NextBlock,
+    step: next_block,
     step_state: 0,
     final: false,
     err: None,
@@ -381,13 +377,9 @@ fn read(self : Decompressor, b : Bytes) -> Int!Error {
       Some(err) => raise err
       _ => ()
     }
-    match self.step {
-      NextBlock => self.next_block()
-      HuffmanBlock => self.huffman_block()
-      CopyData => self.copy_data()
-    }
+    (self.step._)(self)
     match self.err {
-      Some(err) =>
+      Some(IOEOF) =>
         if self.to_read.length() == 0 {
           self.to_read = self.dict.read_flush() // Flush what's left in case of error
         }
@@ -414,6 +406,7 @@ let code_order = [
 ]
 
 fn read_huffman(self : Decompressor) -> Unit!Error {
+  raise IOEOF
   // 	log.Printf("GML: inflate.go: (f *decompressor) read_huffman() error {")
   // 	// HLIT[5], HDIST[5], HCLEN[4].
   // 	for f.nb < 5+5+4 {
@@ -749,6 +742,7 @@ fn finish_block(self : Decompressor) -> Unit {
 }
 
 fn more_bits(self : Decompressor) -> Unit!Error {
+  raise IOEOF
   // 	log.Printf("GML: inflate.go: (f *decompressor) more_bits() error {")
   // 	c, err := f.r.ReadByte()
   // 	if err != nil {
@@ -762,6 +756,7 @@ fn more_bits(self : Decompressor) -> Unit!Error {
 
 // // Read the next Huffman-encoded symbol from f according to h.
 fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
+  raise IOEOF
   // 	log.Printf("GML: inflate.go: (f *decompressor) huff_sym(h *huffmanDecoder) (int, error) {")
   // 	// Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // 	// with single element, huff_sym must error on these two edge cases. In both
@@ -844,6 +839,7 @@ fn make_reader(self : Decompressor, r : IOReader) -> Unit {
 // }
 
 fn reset(self : Decompressor, r : IOReader, dict : Bytes) -> Unit!Error {
+  raise IOEOF
   // 	log.Printf("GML: inflate.go: (f *decompressor) Reset(r io.Reader, dict []byte) error {")
   // 	*f = decompressor{
   // 		rBuf:     f.rBuf,
