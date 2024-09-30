@@ -5,15 +5,6 @@
 /// Use of this source code is governed by a BSD-style
 /// license that can be found in the LICENSE file.
 
-pub trait IOReader {
-  read(Self, Bytes) -> Int!Error
-}
-
-pub trait IOReadCloser {
-  read(Self, Bytes) -> Int!Error
-  close(Self) -> Unit!Error
-}
-
 struct Reader {}
 
 /// Reader::new returns a new ReadCloser that can be used
@@ -27,11 +18,11 @@ struct Reader {}
 pub fn Reader::new(r : IOReader) -> IOReadCloser {
   // fixed_huffman_decoder_init()
 
-  let f = Decompressor::new(r)
+  Decompressor::new(r)
   // f.makeReader(r)
   // f.bits = new([maxNumLit + maxNumDist]int)
   // f.codebits = new([numCodes]int)
   // f.step = (*decompressor).nextBlock
   // f.dict.init(max_match_offset, nil)
-  f
+  // return &f
 }
