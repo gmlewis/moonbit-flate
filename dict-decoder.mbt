@@ -37,8 +37,30 @@ struct DictDecoder {
 /// DictDecoder::new initializes DictDecoder to have a sliding window dictionary of the given
 /// size. If a preset dict is provided, it will initialize the dictionary with
 /// the contents of dict.
-fn DictDecoder::new(size : Int) -> DictDecoder {
-  { hist: Array::make(size, b'\x00')[:], wr_pos: 0, rd_pos: 0, full: false }
+fn DictDecoder::new(size : Int, dict : ArrayView[Byte]) -> DictDecoder {
+  let dd = {
+    hist: Array::make(size, b'\x00')[:],
+    wr_pos: 0,
+    rd_pos: 0,
+    full: false,
+  }
+
+  // if cap(dd.hist) < size {
+  // 	dd.hist = make([]byte, size)
+  // }
+  // dd.hist = dd.hist[:size]
+
+  let mut dict = dict
+  if dict.length() > size {
+    dict = dict[dict.length() - size:]
+  }
+  dd.wr_pos = copy(dd.hist, dict)
+  if dd.wr_pos == size {
+    dd.wr_pos = 0
+    dd.full = true
+  }
+  dd.rdPos = dd.wr_pos
+  dd
 }
 
 /// hist_size reports the total amount of historical data in the dictionary.

@@ -274,7 +274,7 @@ struct HuffmanDecoder {
 // Decompress state.
 struct Decompressor {
   // Input source.
-  r : IOReader
+  mut r : IOReader
   // rBuf    *bufio.Reader // created if provided io.Reader does not implement io.ByteReader
   mut roffset : Int64
 
@@ -291,7 +291,7 @@ struct Decompressor {
   codebits : Array[Int] // *[num_codes]int
 
   // Output history, buffer.
-  dict : DictDecoder
+  mut dict : DictDecoder
 
   // Temporary buffer (avoids repeated allocation).
   buf : Array[Byte] // [4]byte
@@ -673,7 +673,7 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 	}
 }
 
-// Copy a single uncompressed data block from input to output.
+/// Copy a single uncompressed data block from input to output.
 fn data_block(self : Decompressor) -> Unit {
   // Uncompressed.
   // Discard current half-byte.
@@ -706,43 +706,45 @@ fn data_block(self : Decompressor) -> Unit {
   self.copy_data()
 }
 
-// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
-// It pauses for reads when f.hist is full.
+/// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
+/// It pauses for reads when f.hist is full.
 fn copy_data(self : Decompressor) -> Unit {
-  	let buf = self.dict.write_slice()
-  	if len(buf) > self.copy_len {
-  		buf = buf[:self.copy_len]
-  	}
+  let mut buf = self.dict.write_slice()
+  if buf.length() > self.copy_len {
+    buf = buf[:self.copy_len]
+  }
 
-  	cnt, err := io.ReadFull(self.r, buf)
-  	self.roffset += int64(cnt)
-  	self.copy_len -= cnt
-  	self.dict.write_mark(cnt)
-  	if err != nil {
-  		self.err = no_eof(err)
-  		return
-  	}
-
-  	if self.dict.avail_write() == 0 || self.copy_len > 0 {
-  		self.to_read = self.dict.read_flush()
-  		self.step = copy_data
-  		return
-  	}
-  	self.finish_block()
+  // cnt, err := io.ReadFull(self.r, buf)
+  let cnt = try {
+    self.r.read_full!(buf)
+  } catch {
+    err => {
+      self.err = Some(no_eof(err))
+      return
+    }
+  }
+  self.roffset += cnt.to_int64()
+  self.copy_len -= cnt
+  self.dict.write_mark(cnt)
+  if self.dict.avail_write() == 0 || self.copy_len > 0 {
+    self.to_read = self.dict.read_flush()
+    self.step = copy_data
+    return
+  }
+  self.finish_block()
 }
 
 fn finish_block(self : Decompressor) -> Unit {
-  // 	log.Printf("GML: inflate.go: (f *decompressor) finish_block() {")
-  // 	if f.final {
-  // 		if f.dict.availRead() > 0 {
-  // 			f.to_read = f.dict.read_flush()
-  // 		}
-  // 		f.err = IOEOF
-  // 	}
-  // 	f.step = (*decompressor).next_block
+  if self.final {
+    if self.dict.avail_read() > 0 {
+      self.to_read = self.dict.read_flush()
+    }
+    self.err = Some(IOEOF)
+  }
+  self.step = next_block
 }
 
-// no_eof returns err, unless err == IOEOF, in which case it returns IOErrUnexpectedEOF.
+/// no_eof returns err, unless err == IOEOF, in which case it returns IOErrUnexpectedEOF.
 fn no_eof(e : Error) -> Error {
   match e {
     IOEOF => return IOErrUnexpectedEOF
@@ -846,19 +848,21 @@ fn make_reader(self : Decompressor, r : IOReader) -> Unit {
 // 	})
 // }
 
-fn reset(self : Decompressor, r : IOReader, dict : Bytes) -> Unit!Error {
-  raise IOEOF
-  // 	log.Printf("GML: inflate.go: (f *decompressor) Reset(r io.Reader, dict []byte) error {")
-  // 	*f = decompressor{
-  // 		rBuf:     f.rBuf,
-  // 		bits:     f.bits,
-  // 		codebits: f.codebits,
-  // 		dict:     f.dict,
-  // 		step:     (*decompressor).next_block,
-  // 	}
-  // 	f.make_reader(r)
-  // 	f.dict.init(maxMatchOffset, dict)
-  // 	return nil
+fn reset(self : Decompressor, r : IOReader, dict : Bytes) -> Unit {
+  self.r = r
+  self.roffset = 0
+  self.b = 0
+  self.nb = 0
+  self.dict = DictDecoder::new(max_match_offset, dict)
+  self.step = next_block
+  self.step_state = 0
+  self.final = false
+  self.err = None
+  self.to_read = [][:]
+  self.hl = fixed_huffman_decoder
+  self.hd = Some(fixed_huffman_decoder)
+  self.copy_len = 0
+  self.copy_dist = 0
 }
 
 let fixed_huffman_decoder : HuffmanDecoder = {
