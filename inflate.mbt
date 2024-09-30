@@ -556,7 +556,7 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 		switch {
   // 		case v < 256:
   // 			f.dict.writeByte(byte(v))
-  // 			if f.dict.availWrite() == 0 {
+  // 			if f.dict.avail_write() == 0 {
   // 				f.to_read = f.dict.read_flush()
   // 				f.step = (*decompressor).huffman_block
   // 				f.step_state = stateInit
@@ -663,7 +663,7 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 		}
   // 		f.copy_len -= cnt
 
-  // 		if f.dict.availWrite() == 0 || f.copy_len > 0 {
+  // 		if f.dict.avail_write() == 0 || f.copy_len > 0 {
   // 			f.to_read = f.dict.read_flush()
   // 			f.step = (*decompressor).huffman_block // We need to continue this work
   // 			f.step_state = stateDict
@@ -706,30 +706,29 @@ fn data_block(self : Decompressor) -> Unit {
   self.copy_data()
 }
 
-// // copy_data copies f.copy_len bytes from the underlying reader into f.hist.
-// // It pauses for reads when f.hist is full.
+// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
+// It pauses for reads when f.hist is full.
 fn copy_data(self : Decompressor) -> Unit {
-  // 	log.Printf("GML: inflate.go: (f *decompressor) copy_data() {")
-  // 	buf := f.dict.writeSlice()
-  // 	if len(buf) > f.copy_len {
-  // 		buf = buf[:f.copy_len]
-  // 	}
+  	let buf = self.dict.write_slice()
+  	if len(buf) > self.copy_len {
+  		buf = buf[:self.copy_len]
+  	}
 
-  // 	cnt, err := io.ReadFull(f.r, buf)
-  // 	f.roffset += int64(cnt)
-  // 	f.copy_len -= cnt
-  // 	f.dict.writeMark(cnt)
-  // 	if err != nil {
-  // 		f.err = no_eof(err)
-  // 		return
-  // 	}
+  	cnt, err := io.ReadFull(self.r, buf)
+  	self.roffset += int64(cnt)
+  	self.copy_len -= cnt
+  	self.dict.write_mark(cnt)
+  	if err != nil {
+  		self.err = no_eof(err)
+  		return
+  	}
 
-  // 	if f.dict.availWrite() == 0 || f.copy_len > 0 {
-  // 		f.to_read = f.dict.read_flush()
-  // 		f.step = (*decompressor).copy_data
-  // 		return
-  // 	}
-  // 	f.finish_block()
+  	if self.dict.avail_write() == 0 || self.copy_len > 0 {
+  		self.to_read = self.dict.read_flush()
+  		self.step = copy_data
+  		return
+  	}
+  	self.finish_block()
 }
 
 fn finish_block(self : Decompressor) -> Unit {

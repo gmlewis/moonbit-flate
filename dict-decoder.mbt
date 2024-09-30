@@ -9,8 +9,8 @@
 /// LZ77 decompresses data through sequences of two forms of commands:
 ///
 ///   - Literal insertions: Runs of one or more symbols are inserted into the data
-///     stream as is. This is accomplished through the writeByte method for a
-///     single symbol, or combinations of writeSlice/writeMark for multiple symbols.
+///     stream as is. This is accomplished through the write_byte method for a
+///     single symbol, or combinations of write_slice/write_mark for multiple symbols.
 ///     Any valid stream must start with a literal insertion if no preset dictionary
 ///     is used.
 ///
@@ -20,7 +20,7 @@
 ///     many bytes to copy. Note that it is valid for the length to be greater than
 ///     the distance. Since LZ77 uses forward copies, that situation is used to
 ///     perform a form of run-length encoding on repeated runs of symbols.
-///     The writeCopy and tryWriteCopy are used to implement this command.
+///     The write_copy and try_write_copy are used to implement this command.
 ///
 /// For performance reasons, this implementation performs little to no sanity
 /// checks about the arguments. As such, the invariants documented for each
@@ -34,137 +34,141 @@ struct DictDecoder {
   mut full : Bool // Has a full window length been written yet?
 }
 
-// init initializes DictDecoder to have a sliding window dictionary of the given
-// size. If a preset dict is provided, it will initialize the dictionary with
-// the contents of dict.
+/// DictDecoder::new initializes DictDecoder to have a sliding window dictionary of the given
+/// size. If a preset dict is provided, it will initialize the dictionary with
+/// the contents of dict.
 fn DictDecoder::new(size : Int) -> DictDecoder {
   { hist: Array::make(size, b'\x00')[:], wr_pos: 0, rd_pos: 0, full: false }
 }
 
-// // histSize reports the total amount of historical data in the dictionary.
-// func (dd *DictDecoder) histSize() int {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) histSize() int {")
-// 	if dd.full {
-// 		return len(dd.hist)
-// 	}
-// 	return dd.wr_pos
-// }
+/// hist_size reports the total amount of historical data in the dictionary.
+fn hist_size(self : DictDecoder) -> Int {
+  if self.full {
+    return self.hist.length()
+  }
+  self.wr_pos
+}
 
-// // availRead reports the number of bytes that can be flushed by read_flush.
-// func (dd *DictDecoder) availRead() int {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) availRead() int {")
-// 	return dd.wr_pos - dd.rd_pos
-// }
+/// avail_read reports the number of bytes that can be flushed by read_flush.
+fn avail_read(self : DictDecoder) -> Int {
+  self.wr_pos - self.rd_pos
+}
 
-// // availWrite reports the available amount of output buffer space.
-// func (dd *DictDecoder) availWrite() int {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) availWrite() int {")
-// 	return len(dd.hist) - dd.wr_pos
-// }
+/// avail_write reports the available amount of output buffer space.
+fn avail_write(self : DictDecoder) -> Int {
+  self.hist.length() - self.wr_pos
+}
 
-// // writeSlice returns a slice of the available buffer to write data to.
-// //
-// // This invariant will be kept: len(s) <= availWrite()
-// func (dd *DictDecoder) writeSlice() []byte {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) writeSlice() []byte {")
-// 	return dd.hist[dd.wr_pos:]
-// }
+/// write_slice returns a slice of the available buffer to write data to.
+///
+/// This invariant will be kept: len(s) <= avail_write()
+fn write_slice(self : DictDecoder) -> ArrayView[Byte] {
+  self.hist[self.wr_pos:]
+}
 
-// // writeMark advances the writer pointer by cnt.
-// //
-// // This invariant must be kept: 0 <= cnt <= availWrite()
-// func (dd *DictDecoder) writeMark(cnt int) {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) writeMark(cnt int) {")
-// 	dd.wr_pos += cnt
-// }
+/// write_mark advances the writer pointer by cnt.
+///
+/// This invariant must be kept: 0 <= cnt <= avail_write()
+fn write_mark(self : DictDecoder, cnt : Int) -> Unit {
+  self.wr_pos += cnt
+}
 
-// // writeByte writes a single byte to the dictionary.
-// //
-// // This invariant must be kept: 0 < availWrite()
-// func (dd *DictDecoder) writeByte(c byte) {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) writeByte(c byte) {")
-// 	dd.hist[dd.wr_pos] = c
-// 	dd.wr_pos++
-// }
+/// write_byte writes a single byte to the dictionary.
+///
+/// This invariant must be kept: 0 < avail_write()
+fn write_byte(self : DictDecoder, c : Byte) -> Unit {
+  self.hist[self.wr_pos] = c
+  self.wr_pos += 1
+}
 
-// // writeCopy copies a string at a given (dist, length) to the output.
-// // This returns the number of bytes copied and may be less than the requested
-// // length if the available space in the output buffer is too small.
-// //
-// // This invariant must be kept: 0 < dist <= histSize()
-// func (dd *DictDecoder) writeCopy(dist, length int) int {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) writeCopy(dist, length int) int {")
-// 	dstBase := dd.wr_pos
-// 	dstPos := dstBase
-// 	srcPos := dstPos - dist
-// 	endPos := dstPos + length
-// 	if endPos > len(dd.hist) {
-// 		endPos = len(dd.hist)
-// 	}
+/// write_copy copies a string at a given (dist, length) to the output.
+/// This returns the number of bytes copied and may be less than the requested
+/// length if the available space in the output buffer is too small.
+///
+/// This invariant must be kept: 0 < dist <= hist_size()
+fn write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
+  let dst_base = self.wr_pos
+  let mut dst_pos = dst_base
+  let mut src_pos = dst_pos - dist
+  let mut end_pos = dst_pos + length
+  if end_pos > self.hist.length() {
+    end_pos = self.hist.length()
+  }
 
-// 	// Copy non-overlapping section after destination position.
-// 	//
-// 	// This section is non-overlapping in that the copy length for this section
-// 	// is always less than or equal to the backwards distance. This can occur
-// 	// if a distance refers to data that wraps-around in the buffer.
-// 	// Thus, a backwards copy is performed here; that is, the exact bytes in
-// 	// the source prior to the copy is placed in the destination.
-// 	if srcPos < 0 {
-// 		srcPos += len(dd.hist)
-// 		dstPos += copy(dd.hist[dstPos:endPos], dd.hist[srcPos:])
-// 		srcPos = 0
-// 	}
+  // Copy non-overlapping section after destination position.
+  //
+  // This section is non-overlapping in that the copy length for this section
+  // is always less than or equal to the backwards distance. This can occur
+  // if a distance refers to data that wraps-around in the buffer.
+  // Thus, a backwards copy is performed here; that is, the exact bytes in
+  // the source prior to the copy is placed in the destination.
+  if src_pos < 0 {
+    src_pos += self.hist.length()
+    dst_pos += slice_copy(self.hist[dst_pos:end_pos], self.hist[src_pos:])
+    src_pos = 0
+  }
 
-// 	// Copy possibly overlapping section before destination position.
-// 	//
-// 	// This section can overlap if the copy length for this section is larger
-// 	// than the backwards distance. This is allowed by LZ77 so that repeated
-// 	// strings can be succinctly represented using (dist, length) pairs.
-// 	// Thus, a forwards copy is performed here; that is, the bytes copied is
-// 	// possibly dependent on the resulting bytes in the destination as the copy
-// 	// progresses along. This is functionally equivalent to the following:
-// 	//
-// 	//	for i := 0; i < endPos-dstPos; i++ {
-// 	//		dd.hist[dstPos+i] = dd.hist[srcPos+i]
-// 	//	}
-// 	//	dstPos = endPos
-// 	//
-// 	for dstPos < endPos {
-// 		dstPos += copy(dd.hist[dstPos:endPos], dd.hist[srcPos:dstPos])
-// 	}
+  // Copy possibly overlapping section before destination position.
+  //
+  // This section can overlap if the copy length for this section is larger
+  // than the backwards distance. This is allowed by LZ77 so that repeated
+  // strings can be succinctly represented using (dist, length) pairs.
+  // Thus, a forwards copy is performed here; that is, the bytes copied is
+  // possibly dependent on the resulting bytes in the destination as the copy
+  // progresses along. This is functionally equivalent to the following:
+  //
+  //	for i := 0; i < end_pos-dst_pos; i++ {
+  //		self.hist[dst_pos+i] = self.hist[src_pos+i]
+  //	}
+  //	dst_pos = end_pos
+  //
+  while dst_pos < end_pos {
+    dst_pos += slice_copy(
+      self.hist[dst_pos:end_pos],
+      self.hist[src_pos:dst_pos],
+    )
+  }
+  self.wr_pos = dst_pos
+  return dst_pos - dst_base
+}
 
-// 	dd.wr_pos = dstPos
-// 	return dstPos - dstBase
-// }
+/// try_write_copy tries to copy a string at a given (distance, length) to the
+/// output. This specialized version is optimized for short distances.
+///
+/// This method is designed to be inlined for performance reasons.
+///
+/// This invariant must be kept: 0 < dist <= hist_size()
+fn try_write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
+  let mut dst_pos = self.wr_pos
+  let end_pos = dst_pos + length
+  if dst_pos < dist || end_pos > self.hist.length() {
+    return 0
+  }
+  let dst_base = dst_pos
+  let src_pos = dst_pos - dist
 
-// // tryWriteCopy tries to copy a string at a given (distance, length) to the
-// // output. This specialized version is optimized for short distances.
-// //
-// // This method is designed to be inlined for performance reasons.
-// //
-// // This invariant must be kept: 0 < dist <= histSize()
-// func (dd *DictDecoder) tryWriteCopy(dist, length int) int {
-// 	log.Printf("GML: dict_decoder.go: (dd *DictDecoder) tryWriteCopy(dist, length int) int {")
-// 	dstPos := dd.wr_pos
-// 	endPos := dstPos + length
-// 	if dstPos < dist || endPos > len(dd.hist) {
-// 		return 0
-// 	}
-// 	dstBase := dstPos
-// 	srcPos := dstPos - dist
+  // Copy possibly overlapping section before destination position.
+  while dst_pos < end_pos {
+    dst_pos += slice_copy( // TODO: Use blit here?
+      self.hist[dst_pos:end_pos],
+      self.hist[src_pos:dst_pos],
+    )
+  }
+  self.wr_pos = dst_pos
+  return dst_pos - dst_base
+}
 
-// 	// Copy possibly overlapping section before destination position.
-// 	for dstPos < endPos {
-// 		dstPos += copy(dd.hist[dstPos:endPos], dd.hist[srcPos:dstPos])
-// 	}
+fn slice_copy(dst : ArrayView[Byte], src : ArrayView[Byte]) -> Int {
+  let n = src.length()
+  for i = 0; i < n; i = i + 1 {
+    dst[i] = src[i]
+  }
+  n
+}
 
-// 	dd.wr_pos = dstPos
-// 	return dstPos - dstBase
-// }
-
-// read_flush returns a slice of the historical buffer that is ready to be
-// emitted to the user. The data returned by read_flush must be fully consumed
-// before calling any other DictDecoder methods.
+/// read_flush returns a slice of the historical buffer that is ready to be
+/// emitted to the user. The data returned by read_flush must be fully consumed
+/// before calling any other DictDecoder methods.
 fn read_flush(self : DictDecoder) -> ArrayView[Byte] {
   let to_read = self.hist[self.rd_pos:self.wr_pos]
   self.rd_pos = self.wr_pos
