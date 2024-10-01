@@ -82,7 +82,7 @@ fn to_string(self : InternalError) -> String {
 // }
 
 // // The data structure for decoding Huffman tables is based on that of
-// // zlib. There is a lookup table of a fixed bit width (huffmanChunkBits),
+// // zlib. There is a lookup table of a fixed bit width (huffman_chunk_bits),
 // // For codes smaller than the table width, there are multiple entries
 // // (each combination of trailing bits has the same value). For codes
 // // larger than the table width, the table contains a link to an overflow
@@ -101,16 +101,17 @@ fn to_string(self : InternalError) -> String {
 // // chunk & 15 is number of bits
 // // chunk >> 4 is value, including table link
 
-// const (
-// 	huffmanChunkBits  = 9
-// 	huffmanNumChunks  = 1 << huffmanChunkBits
-// 	huffmanCountMask  = 15
-// 	huffmanValueShift = 4
-// )
+let huffman_chunk_bits = 9
+
+let huffman_num_chunks : UInt = 1U << huffman_chunk_bits
+
+let huffman_count_mask = 15U
+
+let huffman_value_shift = 4
 
 struct HuffmanDecoder {
   min : Int // the minimum code length
-  chunks : Array[UInt] // [huffmanNumChunks]uint32 // chunks as described above
+  chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
   links : Array[Array[UInt]] // [][]uint32               // overflow links
   link_mask : UInt // mask the width of the link table
 }
@@ -177,21 +178,21 @@ struct HuffmanDecoder {
 // 	}
 
 // 	h.min = min
-// 	if max > huffmanChunkBits {
-// 		numLinks := 1 << (uint(max) - huffmanChunkBits)
+// 	if max > huffman_chunk_bits {
+// 		numLinks := 1 << (uint(max) - huffman_chunk_bits)
 // 		h.link_mask = uint32(numLinks - 1)
 
 // 		// create link tables
-// 		link := nextcode[huffmanChunkBits+1] >> 1
-// 		h.links = make([][]uint32, huffmanNumChunks-link)
-// 		for j := uint(link); j < huffmanNumChunks; j++ {
+// 		link := nextcode[huffman_chunk_bits+1] >> 1
+// 		h.links = make([][]uint32, huffman_num_chunks-link)
+// 		for j := uint(link); j < huffman_num_chunks; j++ {
 // 			reverse := int(bits.Reverse16(uint16(j)))
-// 			reverse >>= uint(16 - huffmanChunkBits)
+// 			reverse >>= uint(16 - huffman_chunk_bits)
 // 			off := j - uint(link)
 // 			if sanity && h.chunks[reverse] != 0 {
 // 				panic("impossible: overwriting existing chunk")
 // 			}
-// 			h.chunks[reverse] = uint32(off<<huffmanValueShift | (huffmanChunkBits + 1))
+// 			h.chunks[reverse] = uint32(off<<huffman_value_shift | (huffman_chunk_bits + 1))
 // 			h.links[off] = make([]uint32, numLinks)
 // 		}
 // 	}
@@ -202,10 +203,10 @@ struct HuffmanDecoder {
 // 		}
 // 		code := nextcode[n]
 // 		nextcode[n]++
-// 		chunk := uint32(i<<huffmanValueShift | n)
+// 		chunk := uint32(i<<huffman_value_shift | n)
 // 		reverse := int(bits.Reverse16(uint16(code)))
 // 		reverse >>= uint(16 - n)
-// 		if n <= huffmanChunkBits {
+// 		if n <= huffman_chunk_bits {
 // 			for off := reverse; off < len(h.chunks); off += 1 << uint(n) {
 // 				// We should never need to overwrite
 // 				// an existing chunk. Also, 0 is
@@ -218,16 +219,16 @@ struct HuffmanDecoder {
 // 				h.chunks[off] = chunk
 // 			}
 // 		} else {
-// 			j := reverse & (huffmanNumChunks - 1)
-// 			if sanity && h.chunks[j]&huffmanCountMask != huffmanChunkBits+1 {
+// 			j := reverse & (huffman_num_chunks - 1)
+// 			if sanity && h.chunks[j]&huffman_count_mask != huffman_chunk_bits+1 {
 // 				// Longer codes should have been
 // 				// associated with a link table above.
 // 				panic("impossible: not an indirect chunk")
 // 			}
-// 			value := h.chunks[j] >> huffmanValueShift
+// 			value := h.chunks[j] >> huffman_value_shift
 // 			linktab := h.links[value]
-// 			reverse >>= huffmanChunkBits
-// 			for off := reverse; off < len(linktab); off += 1 << uint(n-huffmanChunkBits) {
+// 			reverse >>= huffman_chunk_bits
+// 			for off := reverse; off < len(linktab); off += 1 << uint(n-huffman_chunk_bits) {
 // 				if sanity && linktab[off] != 0 {
 // 					panic("impossible: overwriting existing chunk")
 // 				}
@@ -275,7 +276,6 @@ struct HuffmanDecoder {
 struct Decompressor {
   // Input source.
   mut r : IOReader
-  // rBuf    *bufio.Reader // created if provided io.Reader does not implement io.ByteReader
   mut roffset : Int64
 
   // Input bits, in top of b.
@@ -764,89 +764,60 @@ fn more_bits(self : Decompressor) -> Error? {
   None
 }
 
-// // Read the next Huffman-encoded symbol from f according to h.
+/// Read the next Huffman-encoded symbol from f according to h.
 fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
-  raise IOEOF
-  // 	log.Printf("GML: inflate.go: (f *decompressor) huff_sym(h *huffmanDecoder) (int, error) {")
-  // 	// Since a huffmanDecoder can be empty or be composed of a degenerate tree
-  // 	// with single element, huff_sym must error on these two edge cases. In both
-  // 	// cases, the chunks slice will be 0 for the invalid sequence, leading it
-  // 	// satisfy the n == 0 check below.
-  // 	n := uint(h.min)
-  // 	// Optimization. Compiler isn't smart enough to keep f.b,f.nb in registers,
-  // 	// but is smart enough to keep local variables in registers, so use nb and b,
-  // 	// inline call to more_bits and reassign b,nb back to f on return.
-  // 	nb, b := f.nb, f.b
-  // 	for {
-  // 		for nb < n {
-  // 			c, err := f.r.read_byte()
-  // 			if err != nil {
-  // 				f.b = b
-  // 				f.nb = nb
-  // 				return 0, no_eof(err)
-  // 			}
-  // 			f.roffset++
-  // 			b |= uint32(c) << (nb & 31)
-  // 			nb += 8
-  // 		}
-  // 		chunk := h.chunks[b&(huffmanNumChunks-1)]
-  // 		n = uint(chunk & huffmanCountMask)
-  // 		if n > huffmanChunkBits {
-  // 			chunk = h.links[chunk>>huffmanValueShift][(b>>huffmanChunkBits)&h.link_mask]
-  // 			n = uint(chunk & huffmanCountMask)
-  // 		}
-  // 		if n <= nb {
-  // 			if n == 0 {
-  // 				f.b = b
-  // 				f.nb = nb
-  // 				f.err = CorruptInputError(f.roffset)
-  // 				return 0, f.err
-  // 			}
-  // 			f.b = b >> (n & 31)
-  // 			f.nb = nb - n
-  // 			return int(chunk >> huffmanValueShift), nil
-  // 		}
-  // 	}
-  0
+  // Since a huffmanDecoder can be empty or be composed of a degenerate tree
+  // with single element, huff_sym must error on these two edge cases. In both
+  // cases, the chunks slice will be 0 for the invalid sequence, leading it
+  // satisfy the n == 0 check below.
+  let mut n = h.min.reinterpret_as_uint()
+  // Go comment: Optimization. Compiler isn't smart enough to keep f.b,f.nb in registers,
+  // but is smart enough to keep local variables in registers, so use nb and b,
+  // inline call to more_bits and reassign b,nb back to f on return.
+  let mut nb = self.nb
+  let mut b = self.b
+  for {
+    while nb < n {
+      let c = try {
+        self.r.read_byte!()
+      } catch {
+        err => {
+          self.b = b
+          self.nb = nb
+          raise no_eof(err)
+        }
+      }
+      self.roffset += 1
+      b = b | (c.to_uint() << (nb & 31).reinterpret_as_int())
+      nb += 8
+    }
+    let mut chunk = h.chunks[(b & (huffman_num_chunks - 1)).reinterpret_as_int()]
+    n = chunk & huffman_count_mask
+    if n > huffman_chunk_bits.reinterpret_as_uint() {
+      chunk = h.links[(chunk >> huffman_value_shift).reinterpret_as_int()][((
+          b >> huffman_chunk_bits
+        ) &
+        h.link_mask).reinterpret_as_int()]
+      n = chunk & huffman_count_mask
+    }
+    if n <= nb {
+      if n == 0 {
+        self.b = b
+        self.nb = nb
+        let err = CorruptInputError(self.roffset)
+        self.err = Some(err)
+        raise err
+      }
+      self.b = b >> (n & 31).reinterpret_as_int()
+      self.nb = nb - n
+      return (chunk >> huffman_value_shift).reinterpret_as_int()
+    }
+  }
 }
 
 fn make_reader(self : Decompressor, r : IOReader) -> Unit {
-  // 	log.Printf("GML: inflate.go: (f *decompressor) make_reader(r io.Reader) {")
-  // 	if rr, ok := r.(Reader); ok {
-  // 		f.rBuf = nil
-  // 		f.r = rr
-  // 		return
-  // 	}
-  // 	// Reuse rBuf if possible. Invariant: rBuf is always created (and owned) by decompressor.
-  // 	if f.rBuf != nil {
-  // 		f.rBuf.Reset(r)
-  // 	} else {
-  // 		// bufio.NewReader will not return r, as r does not implement flate.Reader, so it is not bufio.Reader.
-  // 		f.rBuf = bufio.NewReader(r)
-  // 	}
-  // 	f.r = f.rBuf
+  self.r = r
 }
-
-// func fixed_huffman_decoderInit() {
-// 	log.Printf("GML: inflate.go: fixed_huffman_decoderInit() {")
-// 	fixedOnce.Do(func() {
-// 		// These come from the RFC section 3.2.6.
-// 		var bits [288]int
-// 		for i := 0; i < 144; i++ {
-// 			bits[i] = 8
-// 		}
-// 		for i := 144; i < 256; i++ {
-// 			bits[i] = 9
-// 		}
-// 		for i := 256; i < 280; i++ {
-// 			bits[i] = 7
-// 		}
-// 		for i := 280; i < 288; i++ {
-// 			bits[i] = 8
-// 		}
-// 		fixed_huffman_decoder.init(bits[:])
-// 	})
-// }
 
 fn reset(self : Decompressor, r : IOReader, dict : ArrayView[Byte]) -> Unit {
   self.r = r
