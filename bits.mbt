@@ -5,7 +5,12 @@
 /// Use of this source code is governed by a BSD-style
 /// license that can be found in the LICENSE file.
 
-// reverse16 returns the value of x with its bits in reversed order.
+/// reverse8 returns the value of x with its bits in reversed order.
+fn reverse8(x : Byte) -> Byte {
+  return rev8tab[x.to_int()]
+}
+
+/// reverse16 returns the value of x with its bits in reversed order.
 fn reverse16(x : UInt) -> UInt {
   return rev8tab[(x >> 8).reinterpret_as_int()].to_uint() |
     (rev8tab[(x & 0xff).reinterpret_as_int()].to_uint() << 8)

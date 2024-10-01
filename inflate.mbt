@@ -544,113 +544,124 @@ fn huffman_block(self : Decompressor) -> Unit {
 /// read_literal:
 /// Read literal and/or (length, distance) according to RFC section 3.2.3.
 fn read_literal(self : Decompressor) -> Unit {
-  // 		v, err := f.huff_sym(f.hl)
-  // 		if err != nil {
-  // 			f.err = err
-  // 			return
-  // 		}
-  // 		var n uint // number of bits extra
-  // 		var length int
-  // 		switch {
-  // 		case v < 256:
-  // 			f.dict.writeByte(byte(v))
-  // 			if f.dict.avail_write() == 0 {
-  // 				f.to_read = f.dict.read_flush()
-  // 				f.step = (*decompressor).huffman_block
-  // 				f.step_state = stateInit
-  // 				return
-  // 			}
-  // 			goto read_literal
-  // 		case v == 256:
-  // 			f.finish_block()
-  // 			return
-  // 		// otherwise, reference to older data
-  // 		case v < 265:
-  // 			length = v - (257 - 3)
-  // 			n = 0
-  // 		case v < 269:
-  // 			length = v*2 - (265*2 - 11)
-  // 			n = 1
-  // 		case v < 273:
-  // 			length = v*4 - (269*4 - 19)
-  // 			n = 2
-  // 		case v < 277:
-  // 			length = v*8 - (273*8 - 35)
-  // 			n = 3
-  // 		case v < 281:
-  // 			length = v*16 - (277*16 - 67)
-  // 			n = 4
-  // 		case v < 285:
-  // 			length = v*32 - (281*32 - 131)
-  // 			n = 5
-  // 		case v < max_num_lit:
-  // 			length = 258
-  // 			n = 0
-  // 		default:
-  // 			f.err = CorruptInputError(f.roffset)
-  // 			return
-  // 		}
-  // 		if n > 0 {
-  // 			for f.nb < n {
-  // 				if err = f.more_bits(); err != nil {
-  // 					f.err = err
-  // 					return
-  // 				}
-  // 			}
-  // 			length += int(f.b & uint32(1<<n-1))
-  // 			f.b >>= n
-  // 			f.nb -= n
-  // 		}
+  let v = try {
+    self.huff_sym!(self.hl)
+  } catch {
+    err => {
+      self.err = Some(err)
+      return
+    }
+  }
+  let mut n = 0U // number of bits extra
+  let mut length = 0
+  if v < 256 {
+    self.dict.write_byte(v.to_byte())
+    if self.dict.avail_write() == 0 {
+      self.to_read = self.dict.read_flush()
+      self.step = huffman_block
+      self.step_state = StateInit
+      return
+    }
+    return self.read_literal()
+  }
+  if v == 256 {
+    self.finish_block()
+    return
+  }
+  // otherwise, reference to older data
+  if v < 265 {
+    length = v - (257 - 3)
+    n = 0
+  } else if v < 269 {
+    length = v * 2 - (265 * 2 - 11)
+    n = 1
+  } else if v < 273 {
+    length = v * 4 - (269 * 4 - 19)
+    n = 2
+  } else if v < 277 {
+    length = v * 8 - (273 * 8 - 35)
+    n = 3
+  } else if v < 281 {
+    length = v * 16 - (277 * 16 - 67)
+    n = 4
+  } else if v < 285 {
+    length = v * 32 - (281 * 32 - 131)
+    n = 5
+  } else if v < max_num_lit {
+    length = 258
+    n = 0
+  } else {
+    self.err = Some(CorruptInputError(self.roffset))
+    return
+  }
 
-  // 		var dist int
-  // 		if f.hd == nil {
-  // 			for f.nb < 5 {
-  // 				if err = f.more_bits(); err != nil {
-  // 					f.err = err
-  // 					return
-  // 				}
-  // 			}
-  // 			dist = int(bits.Reverse8(uint8(f.b & 0x1F << 3)))
-  // 			f.b >>= 5
-  // 			f.nb -= 5
-  // 		} else {
-  // 			if dist, err = f.huff_sym(f.hd); err != nil {
-  // 				f.err = err
-  // 				return
-  // 			}
-  // 		}
+  //
+  if n > 0 {
+    while self.nb < n {
+      self.err = self.more_bits()
+      guard let None = self.err else { _ => return  }
 
-  // 		switch {
-  // 		case dist < 4:
-  // 			dist++
-  // 		case dist < max_num_dist:
-  // 			nb := uint(dist-2) >> 1
-  // 			// have 1 bit in bottom of dist, need nb more.
-  // 			extra := (dist & 1) << nb
-  // 			for f.nb < nb {
-  // 				if err = f.more_bits(); err != nil {
-  // 					f.err = err
-  // 					return
-  // 				}
-  // 			}
-  // 			extra |= int(f.b & uint32(1<<nb-1))
-  // 			f.b >>= nb
-  // 			f.nb -= nb
-  // 			dist = 1<<(nb+1) + 1 + extra
-  // 		default:
-  // 			f.err = CorruptInputError(f.roffset)
-  // 			return
-  // 		}
+    }
+    length += (self.b & (1U << (n - 1).reinterpret_as_int())).reinterpret_as_int()
+    self.b = self.b >> n.reinterpret_as_int()
+    self.nb -= n
+  }
 
-  // 		// No check on length; encoding can be prescient.
-  // 		if dist > f.dict.histSize() {
-  // 			f.err = CorruptInputError(f.roffset)
-  // 			return
-  // 		}
+  //
+  let mut dist = 0
+  match self.hd {
+    None => {
+      while self.nb < 5 {
+        self.err = self.more_bits()
+        guard let None = self.err else { _ => return  }
 
-  // 		f.copy_len, f.copy_dist = length, dist
-  // 		goto copy_history
-  // 	}
+      }
+      let to_rev = (self.b & (0x1F << 3).reinterpret_as_uint()).to_byte()
+      dist = reverse8(to_rev).to_int()
+      self.b = self.b >> 5
+      self.nb -= 5
+    }
+    Some(hd) =>
+      dist = try {
+        self.huff_sym!(hd)
+      } catch {
+        err => {
+          self.err = Some(err)
+          return
+        }
+      }
+  }
+
+  //
+  if dist < 4 {
+    dist += 1
+  } else if dist < max_num_dist {
+    let nb = (dist - 2).reinterpret_as_uint() >> 1
+    // have 1 bit in bottom of dist, need nb more.
+    let mut extra = (dist & 1) << nb.reinterpret_as_int()
+    while self.nb < nb {
+      self.err = self.more_bits()
+      guard let None = self.err else { _ => return  }
+
+    }
+    extra = extra |
+      (self.b & (1U << (nb - 1).reinterpret_as_int())).reinterpret_as_int()
+    self.b = self.b >> nb.reinterpret_as_int()
+    self.nb -= nb
+    dist = 1 << (nb + 1 + 1 + extra.reinterpret_as_uint()).reinterpret_as_int()
+  } else {
+    self.err = Some(CorruptInputError(self.roffset))
+    return
+  }
+
+  // No check on length; encoding can be prescient.
+  if dist > self.dict.hist_size() {
+    self.err = Some(CorruptInputError(self.roffset))
+    return
+  }
+  self.copy_len = length
+  self.copy_dist = dist
+  self.copy_history()
 }
 
 /// copy_history:
