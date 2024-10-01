@@ -9,7 +9,7 @@
 /// RFC 1951.  The gzip and zlib packages implement access to DEFLATE-based file
 /// formats.
 
-// let max_code_len = 16 // max length of Huffman code
+let max_code_len = 16 // max length of Huffman code
 // The next three numbers come from the RFC section 3.2.7, with the
 // additional proviso in section 3.2.5 which implies that distance codes
 // 30 and 31 should never occur in compressed data.
@@ -19,10 +19,6 @@ let max_num_lit = 286
 let max_num_dist = 30
 
 let num_codes = 19 // number of codes in Huffman meta-code
-
-// // Initialize the fixed_huffman_decoder only once upon first use.
-// var fixedOnce sync.Once
-// var fixed_huffman_decoder huffmanDecoder
 
 /// A CorruptInputError reports the presence of corrupt input at a given offset.
 pub type! CorruptInputError Int64
@@ -111,158 +107,176 @@ let huffman_value_shift = 4
 
 struct HuffmanDecoder {
   mut min : Int // the minimum code length
-  chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
-  links : Array[Array[UInt]] // [][]uint32               // overflow links
-  link_mask : UInt // mask the width of the link table
+  mut chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
+  mut links : Array[Array[UInt]] // [][]uint32               // overflow links
+  mut link_mask : UInt // mask the width of the link table
 }
 
-// // Initialize Huffman decoding tables from array of code lengths.
-// // Following this function, h is guaranteed to be initialized into a complete
-// // tree (i.e., neither over-subscribed nor under-subscribed). The exception is a
-// // degenerate case where the tree has only a single symbol with length 1. Empty
-// // trees are permitted.
-// func (h *huffmanDecoder) init(lengths []int) bool {
-// 	log.Printf("GML: inflate.go: (h *huffmanDecoder) init(lengths []int) bool {")
-// 	// Sanity enables additional runtime tests during Huffman
-// 	// table construction. It's intended to be used during
-// 	// development to supplement the currently ad-hoc unit tests.
-// 	const sanity = false
+/// Initialize Huffman decoding tables from array of code lengths.
+/// Following this function, h is guaranteed to be initialized into a complete
+/// tree (i.e., neither over-subscribed nor under-subscribed). The exception is a
+/// degenerate case where the tree has only a single symbol with length 1. Empty
+/// trees are permitted.
+fn initialize(self : HuffmanDecoder, lengths : ArrayView[Int]) -> Bool {
+  // Sanity enables additional runtime tests during Huffman
+  // table construction. It's intended to be used during
+  // development to supplement the currently ad-hoc unit tests.
+  // let sanity = false
 
-// 	if h.min != 0 {
-// 		*h = huffmanDecoder{}
-// 	}
+  //
+  if self.min != 0 {
+    self.min = 0
+    self.chunks = Array::make(huffman_num_chunks.reinterpret_as_int(), 0U)
+    self.links = []
+    self.link_mask = 0
+  }
 
-// 	// Count number of codes of each length,
-// 	// compute min and max length.
-// 	var count [maxCodeLen]int
-// 	var min, max int
-// 	for _, n := range lengths {
-// 		if n == 0 {
-// 			continue
-// 		}
-// 		if min == 0 || n < min {
-// 			min = n
-// 		}
-// 		if n > max {
-// 			max = n
-// 		}
-// 		count[n]++
-// 	}
+  // Count number of codes of each length,
+  // compute min and max length.
+  let count = Array::make(max_code_len, 0) // [max_code_len]int
+  let mut min = 0
+  let mut max = 0
+  for n in lengths {
+    if n == 0 {
+      continue
+    }
+    if min == 0 || n < min {
+      min = n
+    }
+    if n > max {
+      max = n
+    }
+    count[n] += 1
+  }
 
-// 	// Empty tree. The decompressor.huff_sym function will fail later if the tree
-// 	// is used. Technically, an empty tree is only valid for the HDIST tree and
-// 	// not the HCLEN and HLIT tree. However, a stream with an empty HCLEN tree
-// 	// is guaranteed to fail since it will attempt to use the tree to decode the
-// 	// codes for the HLIT and HDIST trees. Similarly, an empty HLIT tree is
-// 	// guaranteed to fail later since the compressed data section must be
-// 	// composed of at least one symbol (the end-of-block marker).
-// 	if max == 0 {
-// 		return true
-// 	}
+  // Empty tree. The decompressor.huff_sym function will fail later if the tree
+  // is used. Technically, an empty tree is only valid for the HDIST tree and
+  // not the HCLEN and HLIT tree. However, a stream with an empty HCLEN tree
+  // is guaranteed to fail since it will attempt to use the tree to decode the
+  // codes for the HLIT and HDIST trees. Similarly, an empty HLIT tree is
+  // guaranteed to fail later since the compressed data section must be
+  // composed of at least one symbol (the end-of-block marker).
+  if max == 0 {
+    return true
+  }
 
-// 	code := 0
-// 	var nextcode [maxCodeLen]int
-// 	for i := min; i <= max; i++ {
-// 		code <<= 1
-// 		nextcode[i] = code
-// 		code += count[i]
-// 	}
+  //
+  let mut code = 0
+  let nextcode = Array::make(max_code_len, 0) //  [max_code_len]int
+  for i = min; i <= max; i = i + 1 {
+    code = code << 1
+    nextcode[i] = code
+    code += count[i]
+  }
 
-// 	// Check that the coding is complete (i.e., that we've
-// 	// assigned all 2-to-the-max possible bit sequences).
-// 	// Exception: To be compatible with zlib, we also need to
-// 	// accept degenerate single-code codings. See also
-// 	// TestDegenerateHuffmanCoding.
-// 	if code != 1<<uint(max) && !(code == 1 && max == 1) {
-// 		return false
-// 	}
+  // Check that the coding is complete (i.e., that we've
+  // assigned all 2-to-the-max possible bit sequences).
+  // Exception: To be compatible with zlib, we also need to
+  // accept degenerate single-code codings. See also
+  // TestDegenerateHuffmanCoding.
+  if code != (1 << max) && not(code == 1 && max == 1) {
+    return false
+  }
 
-// 	h.min = min
-// 	if max > huffman_chunk_bits {
-// 		numLinks := 1 << (uint(max) - huffman_chunk_bits)
-// 		h.link_mask = uint32(numLinks - 1)
+  //
+  self.min = min
+  if max > huffman_chunk_bits {
+    let num_links = 1U << (max - huffman_chunk_bits)
+    self.link_mask = num_links - 1
 
-// 		// create link tables
-// 		link := nextcode[huffman_chunk_bits+1] >> 1
-// 		h.links = make([][]uint32, huffman_num_chunks-link)
-// 		for j := uint(link); j < huffman_num_chunks; j++ {
-// 			reverse := int(bits.Reverse16(uint16(j)))
-// 			reverse >>= uint(16 - huffman_chunk_bits)
-// 			off := j - uint(link)
-// 			if sanity && h.chunks[reverse] != 0 {
-// 				panic("impossible: overwriting existing chunk")
-// 			}
-// 			h.chunks[reverse] = uint32(off<<huffman_value_shift | (huffman_chunk_bits + 1))
-// 			h.links[off] = make([]uint32, numLinks)
-// 		}
-// 	}
+    // create link tables
+    let link = nextcode[huffman_chunk_bits + 1] >> 1
+    self.links = Array::make(
+      (huffman_num_chunks - link.reinterpret_as_uint()).reinterpret_as_int(),
+      [],
+    )
+    for j = link.reinterpret_as_uint(); j < huffman_num_chunks; j = j + 1 {
+      let mut reverse = reverse16(j).reinterpret_as_int()
+      reverse = reverse >> (16 - huffman_chunk_bits)
+      let off = j - link.reinterpret_as_uint()
+      // if sanity && self.chunks[reverse] != 0 {
+      //   abort("impossible: overwriting existing chunk")
+      // }
+      self.chunks[reverse] = (off << huffman_value_shift) |
+        (huffman_chunk_bits + 1).reinterpret_as_uint()
+      self.links[off.reinterpret_as_int()] = Array::make(
+        num_links.reinterpret_as_int(),
+        0U,
+      )
+    }
+  }
 
-// 	for i, n := range lengths {
-// 		if n == 0 {
-// 			continue
-// 		}
-// 		code := nextcode[n]
-// 		nextcode[n]++
-// 		chunk := uint32(i<<huffman_value_shift | n)
-// 		reverse := int(bits.Reverse16(uint16(code)))
-// 		reverse >>= uint(16 - n)
-// 		if n <= huffman_chunk_bits {
-// 			for off := reverse; off < len(h.chunks); off += 1 << uint(n) {
-// 				// We should never need to overwrite
-// 				// an existing chunk. Also, 0 is
-// 				// never a valid chunk, because the
-// 				// lower 4 "count" bits should be
-// 				// between 1 and 15.
-// 				if sanity && h.chunks[off] != 0 {
-// 					panic("impossible: overwriting existing chunk")
-// 				}
-// 				h.chunks[off] = chunk
-// 			}
-// 		} else {
-// 			j := reverse & (huffman_num_chunks - 1)
-// 			if sanity && h.chunks[j]&huffman_count_mask != huffman_chunk_bits+1 {
-// 				// Longer codes should have been
-// 				// associated with a link table above.
-// 				panic("impossible: not an indirect chunk")
-// 			}
-// 			value := h.chunks[j] >> huffman_value_shift
-// 			linktab := h.links[value]
-// 			reverse >>= huffman_chunk_bits
-// 			for off := reverse; off < len(linktab); off += 1 << uint(n-huffman_chunk_bits) {
-// 				if sanity && linktab[off] != 0 {
-// 					panic("impossible: overwriting existing chunk")
-// 				}
-// 				linktab[off] = chunk
-// 			}
-// 		}
-// 	}
+  //
+  for i, n in lengths {
+    if n == 0 {
+      continue
+    }
+    let code = nextcode[n]
+    nextcode[n] += 1
+    let chunk = (i << huffman_value_shift).reinterpret_as_uint() |
+      n.reinterpret_as_uint()
+    let mut reverse = reverse16(code.reinterpret_as_uint()).reinterpret_as_int()
+    reverse = reverse >> (16 - n)
+    if n <= huffman_chunk_bits {
+      for off = reverse; off < self.chunks.length(); off = (off + 1) << n {
+        // We should never need to overwrite
+        // an existing chunk. Also, 0 is
+        // never a valid chunk, because the
+        // lower 4 "count" bits should be
+        // between 1 and 15.
+        // if sanity && self.chunks[off] != 0 {
+        //   abort("impossible: overwriting existing chunk")
+        // }
+        self.chunks[off] = chunk
+      }
+    } else {
+      let j = reverse & (huffman_num_chunks - 1).reinterpret_as_int()
+      // if sanity &&
+      //   (self.chunks[j] & (huffman_count_mask != huffman_chunk_bits + 1)) {
+      //   // Longer codes should have been
+      //   // associated with a link table above.
+      //   abort("impossible: not an indirect chunk")
+      // }
+      let value = self.chunks[j] >> huffman_value_shift
+      let linktab = self.links[value.reinterpret_as_int()]
+      reverse = reverse >> huffman_chunk_bits
+      for off = reverse
+          off < linktab.length()
+          off = (off + 1) << (n - huffman_chunk_bits) {
+        // if sanity && linktab[off] != 0 {
+        //   abort("impossible: overwriting existing chunk")
+        // }
+        linktab[off] = chunk
+      }
+    }
+  }
 
-// 	if sanity {
-// 		// Above we've sanity checked that we never overwrote
-// 		// an existing entry. Here we additionally check that
-// 		// we filled the tables completely.
-// 		for i, chunk := range h.chunks {
-// 			if chunk == 0 {
-// 				// As an exception, in the degenerate
-// 				// single-code case, we allow odd
-// 				// chunks to be missing.
-// 				if code == 1 && i%2 == 1 {
-// 					continue
-// 				}
-// 				panic("impossible: missing chunk")
-// 			}
-// 		}
-// 		for _, linktab := range h.links {
-// 			for _, chunk := range linktab {
-// 				if chunk == 0 {
-// 					panic("impossible: missing chunk")
-// 				}
-// 			}
-// 		}
-// 	}
+  // if sanity {
+  // 	// Above we've sanity checked that we never overwrote
+  // 	// an existing entry. Here we additionally check that
+  // 	// we filled the tables completely.
+  // 	for i, chunk := range self.chunks {
+  // 		if chunk == 0 {
+  // 			// As an exception, in the degenerate
+  // 			// single-code case, we allow odd
+  // 			// chunks to be missing.
+  // 			if code == 1 && i%2 == 1 {
+  // 				continue
+  // 			}
+  // 			panic("impossible: missing chunk")
+  // 		}
+  // 	}
+  // 	for _, linktab := range self.links {
+  // 		for _, chunk := range linktab {
+  // 			if chunk == 0 {
+  // 				panic("impossible: missing chunk")
+  // 			}
+  // 		}
+  // 	}
+  // }
 
-// 	return true
-// }
+  true
+}
 
 // Decompress state.
 struct Decompressor {
@@ -450,14 +464,14 @@ fn read_huffman(self : Decompressor) -> Error? {
   for i = nclen; i < code_order.length(); i = i + 1 {
     self.codebits[code_order[i]] = 0
   }
-  if not(self.h1.init(self.codebits[0:])) {
+  if not(self.h1.initialize(self.codebits[0:])) {
     return Some(CorruptInputError(self.roffset))
   }
 
   // HLIT + 257 code lengths, HDIST + 1 code lengths,
   // using the code length Huffman code.
   let mut i = 0
-  let mut n = nlit + ndist
+  let n = nlit + ndist
   while i < n {
     let x = try {
       self.huff_sym!(self.h1)
@@ -514,8 +528,8 @@ fn read_huffman(self : Decompressor) -> Error? {
   }
 
   //
-  if not(self.h1.init(self.bits[0:nlit])) ||
-    not(self.h2.init(self.bits[nlit:nlit + ndist])) {
+  if not(self.h1.initialize(self.bits[0:nlit])) ||
+    not(self.h2.initialize(self.bits[nlit:nlit + ndist])) {
     return Some(CorruptInputError(self.roffset))
   }
 
