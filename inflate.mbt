@@ -299,7 +299,7 @@ struct Decompressor {
   // Next step in the decompression,
   // and decompression state.
   mut step : StepFunc
-  mut step_state : Int
+  mut step_state : StepState
   mut final : Bool
   mut err : Error?
   mut to_read : ArrayView[Byte] // []byte
@@ -307,6 +307,11 @@ struct Decompressor {
   mut hd : HuffmanDecoder?
   mut copy_len : Int
   mut copy_dist : Int
+}
+
+enum StepState {
+  StateInit
+  StateDict
 }
 
 type StepFunc (Decompressor) -> Unit
@@ -324,7 +329,7 @@ fn Decompressor::new(r : IOReader) -> Decompressor {
     dict: DictDecoder::new(max_match_offset, [][:]),
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
     step: next_block,
-    step_state: 0,
+    step_state: StateInit,
     final: false,
     err: None,
     to_read: [][:],
@@ -525,27 +530,20 @@ fn read_huffman(self : Decompressor) -> Error? {
   // 	return nil
 }
 
-// // Decode a single Huffman block from f.
-// // hl and hd are the Huffman states for the lit/length values
-// // and the distance values, respectively. If hd == nil, using the
-// // fixed distance encoding associated with fixed Huffman blocks.
+/// Decode a single Huffman block.
+/// hl and hd are the Huffman states for the lit/length values
+/// and the distance values, respectively. If hd == nil, using the
+/// fixed distance encoding associated with fixed Huffman blocks.
 fn huffman_block(self : Decompressor) -> Unit {
-  // 	log.Printf("GML: inflate.go: (f *decompressor) huffman_block() {")
-  // 	const (
-  // 		stateInit = iota // Zero value must be stateInit
-  // 		stateDict
-  // 	)
+  match self.step_state {
+    StateInit => self.read_literal()
+    StateDict => self.copy_history()
+  }
+}
 
-  // 	switch f.step_state {
-  // 	case stateInit:
-  // 		goto readLiteral
-  // 	case stateDict:
-  // 		goto copyHistory
-  // 	}
-
-  // readLiteral:
-  // 	// Read literal and/or (length, distance) according to RFC section 3.2.3.
-  // 	{
+/// read_literal:
+/// Read literal and/or (length, distance) according to RFC section 3.2.3.
+fn read_literal(self : Decompressor) -> Unit {
   // 		v, err := f.huff_sym(f.hl)
   // 		if err != nil {
   // 			f.err = err
@@ -562,7 +560,7 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 				f.step_state = stateInit
   // 				return
   // 			}
-  // 			goto readLiteral
+  // 			goto read_literal
   // 		case v == 256:
   // 			f.finish_block()
   // 			return
@@ -651,26 +649,27 @@ fn huffman_block(self : Decompressor) -> Unit {
   // 		}
 
   // 		f.copy_len, f.copy_dist = length, dist
-  // 		goto copyHistory
+  // 		goto copy_history
   // 	}
+}
 
-  // copyHistory:
-  // 	// Perform a backwards copy according to RFC section 3.2.3.
-  // 	{
-  // 		cnt := f.dict.tryWriteCopy(f.copy_dist, f.copy_len)
-  // 		if cnt == 0 {
-  // 			cnt = f.dict.writeCopy(f.copy_dist, f.copy_len)
-  // 		}
-  // 		f.copy_len -= cnt
+/// copy_history:
+/// Perform a backwards copy according to RFC section 3.2.3.
+fn copy_history(self : Decompressor) -> Unit {
+  let mut cnt = self.dict.try_write_copy(self.copy_dist, self.copy_len)
+  if cnt == 0 {
+    cnt = self.dict.write_copy(self.copy_dist, self.copy_len)
+  }
+  self.copy_len -= cnt
 
-  // 		if f.dict.avail_write() == 0 || f.copy_len > 0 {
-  // 			f.to_read = f.dict.read_flush()
-  // 			f.step = (*decompressor).huffman_block // We need to continue this work
-  // 			f.step_state = stateDict
-  // 			return
-  // 		}
-  // 		goto readLiteral
-  // 	}
+  //
+  if self.dict.avail_write() == 0 || self.copy_len > 0 {
+    self.to_read = self.dict.read_flush()
+    self.step = huffman_block // We need to continue this work
+    self.step_state = StateDict
+    return
+  }
+  self.read_literal()
 }
 
 /// Copy a single uncompressed data block from input to output.
@@ -826,7 +825,7 @@ fn reset(self : Decompressor, r : IOReader, dict : ArrayView[Byte]) -> Unit {
   self.nb = 0
   self.dict = DictDecoder::new(max_match_offset, dict)
   self.step = next_block
-  self.step_state = 0
+  self.step_state = StateInit
   self.final = false
   self.err = None
   self.to_read = [][:]
