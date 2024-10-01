@@ -110,7 +110,7 @@ let huffman_count_mask = 15U
 let huffman_value_shift = 4
 
 struct HuffmanDecoder {
-  min : Int // the minimum code length
+  mut min : Int // the minimum code length
   chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
   links : Array[Array[UInt]] // [][]uint32               // overflow links
   link_mask : UInt // mask the width of the link table
@@ -264,14 +264,6 @@ struct HuffmanDecoder {
 // 	return true
 // }
 
-// // The actual read interface needed by [NewReader].
-// // If the passed in io.Reader does not also have read_byte,
-// // the [NewReader] will introduce its own buffering.
-// type Reader interface {
-// 	io.Reader
-// 	io.ByteReader
-// }
-
 // Decompress state.
 struct Decompressor {
   // Input source.
@@ -421,113 +413,120 @@ let code_order = [
 ]
 
 fn read_huffman(self : Decompressor) -> Error? {
+  // HLIT[5], HDIST[5], HCLEN[4].
+  while self.nb < 5U + 5 + 4 {
+    match self.more_bits() {
+      Some(err) => return Some(err)
+      _ => ()
+    }
+  }
+  let nlit = (self.b & 0x1F).reinterpret_as_int() + 257
+  if nlit > max_num_lit {
+    return Some(CorruptInputError(self.roffset))
+  }
+  self.b = self.b >> 5
+  let ndist = (self.b & 0x1F).reinterpret_as_int() + 1
+  if ndist > max_num_dist {
+    return Some(CorruptInputError(self.roffset))
+  }
+  self.b = self.b >> 5
+  let nclen = (self.b & 0xF).reinterpret_as_int() + 4
+  // num_codes is 19, so nclen is always valid.
+  self.b = self.b >> 4
+  self.nb -= 5U + 5 + 4
+
+  // (HCLEN+4)*3 bits: code lengths in the magic code_order order.
+  for i = 0; i < nclen; i = i + 1 {
+    while self.nb < 3 {
+      match self.more_bits() {
+        Some(err) => return Some(err)
+        _ => ()
+      }
+    }
+    self.codebits[code_order[i]] = (self.b & 0x7).reinterpret_as_int()
+    self.b = self.b >> 3
+    self.nb -= 3
+  }
+  for i = nclen; i < code_order.length(); i = i + 1 {
+    self.codebits[code_order[i]] = 0
+  }
+  if not(self.h1.init(self.codebits[0:])) {
+    return Some(CorruptInputError(self.roffset))
+  }
+
+  // HLIT + 257 code lengths, HDIST + 1 code lengths,
+  // using the code length Huffman code.
+  let mut i = 0
+  let mut n = nlit + ndist
+  while i < n {
+    let x = try {
+      self.huff_sym!(self.h1)
+    } catch {
+      err => return Some(err)
+    }
+    if x < 16 {
+      // Actual length.
+      self.bits[i] = x
+      i += 1
+      continue
+    }
+    // Repeat previous length or zero.
+    let mut rep = 0
+    let mut nb = 0U
+    let mut b = 0
+    match x {
+      16 => {
+        rep = 3
+        nb = 2
+        if i == 0 {
+          return Some(CorruptInputError(self.roffset))
+        }
+        b = self.bits[i - 1]
+      }
+      17 => {
+        rep = 3
+        nb = 3
+        b = 0
+      }
+      18 => {
+        rep = 11
+        nb = 7
+        b = 0
+      }
+      _ => return Some(InternalError("unexpected length code"))
+    }
+    while self.nb < nb {
+      match self.more_bits() {
+        Some(err) => return Some(err)
+        _ => ()
+      }
+    }
+    rep += (self.b & (1 << (nb - 1).reinterpret_as_int()).reinterpret_as_uint()).reinterpret_as_int()
+    self.b = self.b >> nb.reinterpret_as_int()
+    self.nb -= nb
+    if i + rep > n {
+      return Some(CorruptInputError(self.roffset))
+    }
+    for j = 0; j < rep; j = j + 1 {
+      self.bits[i] = b
+      i += 1
+    }
+  }
+
+  //
+  if not(self.h1.init(self.bits[0:nlit])) ||
+    not(self.h2.init(self.bits[nlit:nlit + ndist])) {
+    return Some(CorruptInputError(self.roffset))
+  }
+
+  // As an optimization, we can initialize the min bits to read at a time
+  // for the HLIT tree to the length of the EOB marker since we know that
+  // every block must terminate with one. This preserves the property that
+  // we never read any extra bytes after the end of the DEFLATE stream.
+  if self.h1.min < self.bits[end_block_marker] {
+    self.h1.min = self.bits[end_block_marker]
+  }
   None
-  // 	log.Printf("GML: inflate.go: (f *decompressor) read_huffman() error {")
-  // 	// HLIT[5], HDIST[5], HCLEN[4].
-  // 	for f.nb < 5+5+4 {
-  // 		if err := f.more_bits(); err != nil {
-  // 			return err
-  // 		}
-  // 	}
-  // 	nlit := int(f.b&0x1F) + 257
-  // 	if nlit > max_num_lit {
-  // 		return CorruptInputError(f.roffset)
-  // 	}
-  // 	f.b >>= 5
-  // 	ndist := int(f.b&0x1F) + 1
-  // 	if ndist > max_num_dist {
-  // 		return CorruptInputError(f.roffset)
-  // 	}
-  // 	f.b >>= 5
-  // 	nclen := int(f.b&0xF) + 4
-  // 	// num_codes is 19, so nclen is always valid.
-  // 	f.b >>= 4
-  // 	f.nb -= 5 + 5 + 4
-
-  // 	// (HCLEN+4)*3 bits: code lengths in the magic code_order order.
-  // 	for i := 0; i < nclen; i++ {
-  // 		for f.nb < 3 {
-  // 			if err := f.more_bits(); err != nil {
-  // 				return err
-  // 			}
-  // 		}
-  // 		f.codebits[code_order[i]] = int(f.b & 0x7)
-  // 		f.b >>= 3
-  // 		f.nb -= 3
-  // 	}
-  // 	for i := nclen; i < len(code_order); i++ {
-  // 		f.codebits[code_order[i]] = 0
-  // 	}
-  // 	if !f.h1.init(f.codebits[0:]) {
-  // 		return CorruptInputError(f.roffset)
-  // 	}
-
-  // 	// HLIT + 257 code lengths, HDIST + 1 code lengths,
-  // 	// using the code length Huffman code.
-  // 	for i, n := 0, nlit+ndist; i < n; {
-  // 		x, err := f.huff_sym(&f.h1)
-  // 		if err != nil {
-  // 			return err
-  // 		}
-  // 		if x < 16 {
-  // 			// Actual length.
-  // 			f.bits[i] = x
-  // 			i++
-  // 			continue
-  // 		}
-  // 		// Repeat previous length or zero.
-  // 		var rep int
-  // 		var nb uint
-  // 		var b int
-  // 		switch x {
-  // 		default:
-  // 			return InternalError("unexpected length code")
-  // 		case 16:
-  // 			rep = 3
-  // 			nb = 2
-  // 			if i == 0 {
-  // 				return CorruptInputError(f.roffset)
-  // 			}
-  // 			b = f.bits[i-1]
-  // 		case 17:
-  // 			rep = 3
-  // 			nb = 3
-  // 			b = 0
-  // 		case 18:
-  // 			rep = 11
-  // 			nb = 7
-  // 			b = 0
-  // 		}
-  // 		for f.nb < nb {
-  // 			if err := f.more_bits(); err != nil {
-  // 				return err
-  // 			}
-  // 		}
-  // 		rep += int(f.b & uint32(1<<nb-1))
-  // 		f.b >>= nb
-  // 		f.nb -= nb
-  // 		if i+rep > n {
-  // 			return CorruptInputError(f.roffset)
-  // 		}
-  // 		for j := 0; j < rep; j++ {
-  // 			f.bits[i] = b
-  // 			i++
-  // 		}
-  // 	}
-
-  // 	if !f.h1.init(f.bits[0:nlit]) || !f.h2.init(f.bits[nlit:nlit+ndist]) {
-  // 		return CorruptInputError(f.roffset)
-  // 	}
-
-  // 	// As an optimization, we can initialize the min bits to read at a time
-  // 	// for the HLIT tree to the length of the EOB marker since we know that
-  // 	// every block must terminate with one. This preserves the property that
-  // 	// we never read any extra bytes after the end of the DEFLATE stream.
-  // 	if f.h1.min < f.bits[endBlockMarker] {
-  // 		f.h1.min = f.bits[endBlockMarker]
-  // 	}
-
-  // 	return nil
 }
 
 /// Decode a single Huffman block.
