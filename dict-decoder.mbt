@@ -1,6 +1,6 @@
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/dict_decoder.go
-/// which has the copyright notice:
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/dict_decoder.go
+// which has the copyright notice:
 // Copyright 2016 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -54,12 +54,12 @@ fn DictDecoder::new(size : Int, dict : ArrayView[Byte]) -> DictDecoder {
   if dict.length() > size {
     dict = dict[dict.length() - size:]
   }
-  dd.wr_pos = copy(dd.hist, dict)
+  dd.wr_pos = slice_copy(dd.hist, dict)
   if dd.wr_pos == size {
     dd.wr_pos = 0
     dd.full = true
   }
-  dd.rdPos = dd.wr_pos
+  dd.rd_pos = dd.wr_pos
   dd
 }
 

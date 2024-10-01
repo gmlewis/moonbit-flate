@@ -321,7 +321,7 @@ fn Decompressor::new(r : IOReader) -> Decompressor {
     h2: fixed_huffman_decoder,
     bits: Array::make(max_num_lit + max_num_dist, 0),
     codebits: Array::make(num_codes, 0),
-    dict: DictDecoder::new(max_match_offset),
+    dict: DictDecoder::new(max_match_offset, [][:]),
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
     step: next_block,
     step_state: 0,
@@ -848,7 +848,7 @@ fn make_reader(self : Decompressor, r : IOReader) -> Unit {
 // 	})
 // }
 
-fn reset(self : Decompressor, r : IOReader, dict : Bytes) -> Unit {
+fn reset(self : Decompressor, r : IOReader, dict : ArrayView[Byte]) -> Unit {
   self.r = r
   self.roffset = 0
   self.b = 0
