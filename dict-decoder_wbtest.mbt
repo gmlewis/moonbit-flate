@@ -237,7 +237,7 @@ test "DictDecoder" {
 
   //
   write_string(".")
-  want.write_byte(b'.')
+  want.write_char('.')
 
   //
   let mut str = poem
@@ -253,30 +253,38 @@ test "DictDecoder" {
   //
   want.write_string(poem)
   write_copy(dd.hist_size(), 33)
-  let dup = Bytes::from_iter(want.to_bytes().iter().take(33))
-  want.write_bytes(dup)
+  want.write_sub_string(want.to_string(), 0, 33)
 
-  // write_string(abc)
-  // write_copy(len(abc), 59*len(abc))
-  // want.write_string(strings.Repeat(abc, 60))
+  //
+  write_string(abc)
+  write_copy(abc.length(), 59 * abc.length())
+  want.write_string(abc.repeat(60))
 
-  // write_string(fox)
-  // write_copy(len(fox), 9*len(fox))
-  // want.write_string(strings.Repeat(fox, 10))
+  //
+  write_string(fox)
+  write_copy(fox.length(), 9 * fox.length())
+  want.write_string(fox.repeat(10))
 
-  // write_string(".")
-  // write_copy(1, 9)
-  // want.write_string(strings.Repeat(".", 10))
+  //
+  write_string(".")
+  write_copy(1, 9)
+  want.write_string(".".repeat(10))
 
-  // write_string(strings.ToUpper(poem))
-  // write_copy(len(poem), 7*len(poem))
-  // want.write_string(strings.Repeat(strings.ToUpper(poem), 8))
+  //
+  write_string(poem.to_upper())
+  write_copy(poem.length(), 7 * poem.length())
+  want.write_string(poem.to_upper().repeat(8))
 
-  // write_copy(dd.hist_size(), 10)
-  // want.write(want.to_bytes()[want.Len()-dd.hist_size():][:10])
+  //
+  write_copy(dd.hist_size(), 10)
+  let to_drop = want.to_string().length() - dd.hist_size()
+  want.write_sub_string(want.to_string(), to_drop, 10)
 
-  // got.write(dd.read_flush())
-  // if got.String() != want.String() {
-  // 	t.Errorf("final string mismatch:\ngot  %q\nwant %q", got.String(), want.String())
-  // }
+  //
+  got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
+  let got = bytes2str(got.to_bytes())
+  let want = want.to_string()
+  if got != want {
+    abort("final string mismatch:\ngot  \{got}\nwant \{want}")
+  }
 }
