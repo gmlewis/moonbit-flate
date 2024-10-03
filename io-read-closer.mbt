@@ -4,30 +4,20 @@ pub trait IOReadCloser {
   close(Self) -> Unit!Error
 }
 
-pub fn to_iter(self : IOReadCloser) -> Iter[Byte] {
-  let buf = Bytes::new(1)
-  Iter::new(
-    fn(yield) {
-      for {
-        try {
-          let n = self.read!(buf)
-          if n == 0 || yield(buf[0]) == IterEnd {
-            break IterEnd
-          }
-        } catch {
-          IOEOF => {
-            try {
-              self.close!()
-            } catch {
-              _ => () // TODO: Handle close error here
-            }
-            return IterEnd
-          }
-          _ => () // TODO: Handle other error here
-        }
-      } else {
-        IterContinue
-      }
-    },
-  )
+let io_read_closer_buf_size = 1024
+
+pub fn to_bytes(self : IOReadCloser) -> Bytes!Error {
+  let buf = Buffer::new()
+  let b = Bytes::new(io_read_closer_buf_size)
+  for {
+    let n = self.read!(b)
+    if n == 0 {
+      self.close!()
+      break
+    }
+    for i = 0; i < n; i = i + 1 {
+      buf.write_byte(b[i])
+    }
+  }
+  buf.to_bytes()
 }

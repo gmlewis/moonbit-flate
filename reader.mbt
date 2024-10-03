@@ -5,7 +5,9 @@
 /// Use of this source code is governed by a BSD-style
 /// license that can be found in the LICENSE file.
 
-struct Reader {}
+struct Reader {
+  d : IOReadCloser
+}
 
 /// Reader::new returns a new ReadCloser that can be used
 /// to read the uncompressed version of r.
@@ -15,14 +17,19 @@ struct Reader {}
 /// been encountered. Any trailing data after the final block is ignored.
 ///
 /// The [io.ReadCloser] returned by Reader::new also implements [Resetter].
-pub fn Reader::new(r : IOReader) -> IOReadCloser {
+pub fn Reader::new(r : IOReader) -> Reader {
   // fixed_huffman_decoder_init()
 
-  Decompressor::new(r)
+  let d = Decompressor::new(r)
   // f.makeReader(r)
   // f.bits = new([maxNumLit + maxNumDist]int)
   // f.codebits = new([numCodes]int)
   // f.step = (*decompressor).nextBlock
   // f.dict.init(max_match_offset, nil)
   // return &f
+  { d, }
+}
+
+pub fn to_bytes(self : Reader) -> Bytes!Error {
+  self.d.to_bytes!()
 }

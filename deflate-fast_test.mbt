@@ -60,7 +60,7 @@ test "TestBestSpeed" {
 
       //
       let r = @flate.Reader::new(@flate.IOReader::from_buffer(buf))
-      let got = Bytes::from_iter(@flate.IOReadCloser::to_iter(r))
+      let got = r.to_bytes!() // Bytes::from_iter(@flate.IOReadCloser::to_iter(r))
       assert_eq!(got, want.to_bytes())
     }
   }
