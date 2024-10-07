@@ -24,22 +24,20 @@ let num_codes = 19 // number of codes in Huffman meta-code
 pub type! CorruptInputError Int64
 
 impl Show for CorruptInputError with output(self, logger) {
-  logger.write_string("flate: corrupt input before offset \{self}")
-}
-
-fn to_string(self : CorruptInputError) -> String {
-  Show::to_string(self)
+  let v = match self {
+    CorruptInputError(v) => v
+  }
+  logger.write_string("flate: corrupt input before offset \{v}")
 }
 
 /// An InternalError reports an error in the flate code itself.
 pub type! InternalError String
 
 impl Show for InternalError with output(self, logger) {
-  logger.write_string("flate: internal error: \{self}")
-}
-
-fn to_string(self : InternalError) -> String {
-  Show::to_string(self)
+  let s = match self {
+    InternalError(s) => s
+  }
+  logger.write_string("flate: internal error: \{s}")
 }
 
 // // A ReadError reports an error encountered while reading input.
