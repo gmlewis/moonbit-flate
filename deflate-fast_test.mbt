@@ -42,6 +42,7 @@ test "TestBestSpeed" {
   ]
   for tc in test_cases {
     for first_n in [1, 65534, 65535, 65536, 65537, 131072] {
+      println("tc=\{tc}, first_n=\{first_n}")
       tc[0] = first_n
       let buf = Buffer::new()
       let want = Buffer::new()
@@ -50,20 +51,29 @@ test "TestBestSpeed" {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
         want.write_bytes(subset)
+        println("w.write!: subset=\{@flate.dump_bytes(subset)}")
         let _ = w.write!(subset)
         // if not(flush) {
         // continue
         // }
         // w.flush!()
       }
+      let want = want.to_bytes()
+      println("want=\{@flate.dump_bytes(want)}")
       w.close!()
 
       //
+      println("Reader::new: buf=\{dump_buffer(buf)}")
       let r = @flate.Reader::new(@flate.IOReader::from_buffer(buf))
-      let got = r.to_bytes!() // Bytes::from_iter(@flate.IOReadCloser::to_iter(r))
-      assert_eq!(got, want.to_bytes())
+      let got = r.to_bytes!()
+      println("got=\{@flate.dump_bytes(got)}")
+      assert_eq!(got, want)
     }
   }
+}
+
+fn dump_buffer(buf : Buffer) -> Array[Int] {
+  buf.to_bytes().to_array().map(fn(b) { b.to_int() })
 }
 
 // var errIO = errors.New("IO error")

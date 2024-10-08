@@ -10,7 +10,12 @@ pub fn to_bytes(self : IOReadCloser) -> Bytes!Error {
   let buf = Buffer::new()
   let b = Bytes::new(io_read_closer_buf_size)
   for {
-    let n = self.read!(b)
+    let n = try {
+      self.read!(b)
+    } catch {
+      IOEOF => 0
+      e => raise e
+    }
     if n == 0 {
       self.close!()
       break

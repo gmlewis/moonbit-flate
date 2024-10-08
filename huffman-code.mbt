@@ -237,7 +237,7 @@ fn assign_encoding_and_size(
     quick_sort_by(chunk, by_literal, None, get_limit(chunk.length()))
     for node in chunk {
       self.codes[node.literal.reinterpret_as_int()] = {
-        code: reverse_bits(code.reinterpret_as_uint(), n.to_byte()),
+        code: reverse_bits(code.reinterpret_as_uint() & 0xffff, n.to_byte()),
         len: n.reinterpret_as_uint(),
       }
       code += 1
@@ -267,7 +267,7 @@ fn generate(
   // Set list to be the set of all non-zero literals and their frequencies
   for i, f in freq {
     if f != 0 {
-      list[count] = { literal: i.reinterpret_as_uint(), freq: f }
+      list[count] = { literal: i.reinterpret_as_uint() & 0xfff, freq: f }
       count += 1
     } else {
       self.codes[i].len = 0
@@ -279,8 +279,8 @@ fn generate(
     // two or fewer literals, everything has bit length 1.
     for i, node in list {
       // "list" is in order of increasing literal value.
-      self.codes[node.literal.reinterpret_as_int()] = {
-        code: i.reinterpret_as_uint(),
+      self.codes[node.literal.reinterpret_as_int() & 0xffff] = {
+        code: i.reinterpret_as_uint() & 0xffff,
         len: 1,
       }
     }

@@ -136,10 +136,17 @@ fn flush(self : HuffmanBitWriter) -> Unit {
 }
 
 fn write(self : HuffmanBitWriter, b : Bytes) -> Unit {
+  println(
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) write(b []byte) {: b=\{dump_bytes(b)}",
+  )
   if not(self.err.is_empty()) {
     return
   }
   self.writer.write_bytes(b)
+}
+
+pub fn dump_bytes(buf : Bytes) -> Array[Int] {
+  buf.to_array().map(fn(b) { b.to_int() })
 }
 
 fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
@@ -150,11 +157,15 @@ fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
 }
 
 fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
+  println(
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBits(b int32, nb uint) {: b=\{b}, nb=\{nb}, self.bits=\{self.bits}",
+  )
   if not(self.err.is_empty()) {
     return
   }
   self.bits = self.bits |
     (b.reinterpret_as_uint().to_uint64() << self.nbits.reinterpret_as_int())
+  println("GML: huffman_bit_writer.go: writeBits: w.bits=\{self.bits}")
   self.nbits += nb
   if self.nbits >= 48 {
     let bits = self.bits
@@ -450,7 +461,7 @@ fn write_stored_header(
   self.write_bits(flag, 3)
   self.flush()
   self.write_bits(length, 16)
-  self.write_bits(length.lnot(), 16)
+  self.write_bits(length.lnot() & 0xffff, 16)
 }
 
 // write_block_huff encodes a block of bytes as either

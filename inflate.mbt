@@ -189,7 +189,7 @@ fn initialize(self : HuffmanDecoder, lengths : ArrayView[Int]) -> Bool {
       [],
     )
     for j = link.reinterpret_as_uint(); j < huffman_num_chunks; j = j + 1 {
-      let mut reverse = reverse16(j).reinterpret_as_int()
+      let mut reverse = reverse16(j & 0xffff).reinterpret_as_int()
       reverse = reverse >> (16 - huffman_chunk_bits)
       let off = j - link.reinterpret_as_uint()
       // if sanity && self.chunks[reverse] != 0 {
@@ -213,7 +213,7 @@ fn initialize(self : HuffmanDecoder, lengths : ArrayView[Int]) -> Bool {
     nextcode[n] += 1
     let chunk = (i << huffman_value_shift).reinterpret_as_uint() |
       n.reinterpret_as_uint()
-    let mut reverse = reverse16(code.reinterpret_as_uint()).reinterpret_as_int()
+    let mut reverse = reverse16(code.reinterpret_as_uint() & 0xffff).reinterpret_as_int()
     reverse = reverse >> (16 - n)
     if n <= huffman_chunk_bits {
       for off = reverse; off < self.chunks.length(); off = (off + 1) << n {
@@ -345,16 +345,25 @@ fn Decompressor::new(r : IOReader) -> Decompressor {
 }
 
 fn next_block(self : Decompressor) -> Unit {
+  println(
+    "GML: inflate.go: (f *decompressor) nextBlock() { - f.nb=\{self.nb}, f.b=\{self.b}",
+  )
   while self.nb < 1U + 2 {
     self.err = self.more_bits()
     guard let None = self.err else { _ => return  }
-
+    println("GML: nextBlock: while: f.nb=\{self.nb}, f.b=\{self.b}")
   }
+  println("GML: nextBlock: f.nb=\{self.nb}, f.b=\{self.b}")
   self.final = (self.b & 1) == 1
+  println("GML: nextBlock: f.final=\{self.final}")
   self.b = self.b >> 1
+  println("GML: nextBlock: f.b=\{self.b}")
   let typ = self.b & 3
+  println("GML: nextBlock: typ=\{typ}")
   self.b = self.b >> 2
+  println("GML: nextBlock: f.b=\{self.b}")
   self.nb -= 1U + 2
+  println("GML: nextBlock: f.nb=\{self.nb}")
   match typ {
     0 => self.data_block()
     1 => {
@@ -713,8 +722,7 @@ fn data_block(self : Decompressor) -> Unit {
   self.roffset += nr.to_int64()
   let n = self.buf[0].to_int() | (self.buf[1].to_int() << 8)
   let nn = self.buf[2].to_int() | (self.buf[3].to_int() << 8)
-  // if uint16(nn) != uint16(^n) {
-  if nn.reinterpret_as_uint() != n.reinterpret_as_uint().lnot() {
+  if (nn & 0xffff) != (n.lnot() & 0xffff) {
     self.err = Some(CorruptInputError(self.roffset))
     return
   }
@@ -774,14 +782,19 @@ fn no_eof(e : Error) -> Error {
 }
 
 fn more_bits(self : Decompressor) -> Error? {
+  println("GML: inflate.go: (f *decompressor) moreBits() error {")
   let c = try {
     self.r.read_byte!()
   } catch {
     err => return Some(err)
   }
+  println("GML: inflate.go: moreBits: c=\{c}")
   self.roffset += 1
+  println("GML: inflate.go: moreBits: f.roffset=\{self.roffset}")
   self.b = self.b | (c.to_uint() << self.nb.reinterpret_as_int())
+  println("GML: inflate.go: moreBits: f.b=\{self.b}")
   self.nb += 8
+  println("GML: inflate.go: moreBits: f.nb=\{self.nb}")
   None
 }
 
