@@ -26,7 +26,7 @@
 /// checks about the arguments. As such, the invariants documented for each
 /// method call must be respected.
 struct DictDecoder {
-  mut hist : ArrayView[Byte] // []byte // Sliding window history
+  mut hist : Slice[Byte] // []byte // Sliding window history
 
   // Invariant: 0 <= rd_pos <= wr_pos <= len(hist)
   mut wr_pos : Int // Current output position in buffer
@@ -37,9 +37,9 @@ struct DictDecoder {
 /// DictDecoder::new initializes DictDecoder to have a sliding window dictionary of the given
 /// size. If a preset dict is provided, it will initialize the dictionary with
 /// the contents of dict.
-fn DictDecoder::new(size : Int, dict : ArrayView[Byte]) -> DictDecoder {
+fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
   let dd = {
-    hist: Array::make(size, b'\x00')[:],
+    hist: Slice::new(Array::make(size, b'\x00')),
     wr_pos: 0,
     rd_pos: 0,
     full: false,
@@ -84,7 +84,7 @@ fn avail_write(self : DictDecoder) -> Int {
 /// write_slice returns a slice of the available buffer to write data to.
 ///
 /// This invariant will be kept: len(s) <= avail_write()
-fn write_slice(self : DictDecoder) -> ArrayView[Byte] {
+fn write_slice(self : DictDecoder) -> Slice[Byte] {
   self.hist[self.wr_pos:]
 }
 
@@ -180,7 +180,7 @@ fn try_write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
   return dst_pos - dst_base
 }
 
-fn slice_copy(dst : ArrayView[Byte], src : ArrayView[Byte]) -> Int {
+fn slice_copy(dst : Slice[Byte], src : Slice[Byte]) -> Int {
   let n = @math.minimum(dst.length(), src.length())
   for i = 0; i < n; i = i + 1 {
     dst[i] = src[i]
@@ -191,7 +191,7 @@ fn slice_copy(dst : ArrayView[Byte], src : ArrayView[Byte]) -> Int {
 /// read_flush returns a slice of the historical buffer that is ready to be
 /// emitted to the user. The data returned by read_flush must be fully consumed
 /// before calling any other DictDecoder methods.
-fn read_flush(self : DictDecoder) -> ArrayView[Byte] {
+fn read_flush(self : DictDecoder) -> Slice[Byte] {
   let to_read = self.hist[self.rd_pos:self.wr_pos]
   self.rd_pos = self.wr_pos
   if self.wr_pos == self.hist.length() {

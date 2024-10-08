@@ -106,7 +106,7 @@ fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
   return self.w.err
 }
 
-fn fill_store(self : Compressor, b : ArrayView[Byte]) -> Int {
+fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
   let n = b.length()
   // let n = copy(self.window[self.window_end:], b)
   for i in 0..<n {
@@ -162,7 +162,7 @@ pub fn write(self : Compressor, b : Bytes) -> Int!Error {
   if not(self.err.is_empty()) {
     raise self.err.unwrap()
   }
-  let mut b : ArrayView[Byte] = Array::from_iter(b.iter())[:]
+  let mut b : Slice[Byte] = Slice::new(Array::from_iter(b.iter()))
   let n = b.length()
   while b.length() > 0 {
     self.enc_speed()

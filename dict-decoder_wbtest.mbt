@@ -209,7 +209,7 @@ test "DictDecoder" {
   ]
   let got = Buffer::new()
   let want = Buffer::new()
-  let dd = DictDecoder::new(1 << 11, [][:])
+  let dd = DictDecoder::new(1 << 11, Slice::new([]))
   let write_copy = fn(dist, length) {
     let mut length = length
     while length > 0 {
@@ -224,7 +224,7 @@ test "DictDecoder" {
     }
   }
   let write_string = fn(str : String) {
-    let mut str = str2bytes(str).to_array()[:]
+    let mut str = Slice::new(str2bytes(str).to_array())
     while str.length() > 0 {
       let cnt = slice_copy(dd.write_slice(), str)
       str = str[cnt:]

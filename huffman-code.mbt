@@ -67,7 +67,7 @@ fn max_node() -> LiteralNode {
   { literal: @uint.max_value, freq: @int.max_value }
 }
 
-fn bit_length(self : HuffmanEncoder, freq : ArrayView[Int]) -> Int {
+fn bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
   let mut total = 0
   for i, f in freq {
     if f != 0 {
@@ -95,14 +95,16 @@ let max_bits_limit = 16
 // that should be encoded in i bits.
 fn bit_counts(
   self : HuffmanEncoder,
-  list : ArrayView[LiteralNode],
+  list : Slice[LiteralNode],
   max_bits : Int
-) -> ArrayView[Int] {
+) -> Slice[Int] {
   if max_bits >= max_bits_limit {
     abort("flate: max_bits too large")
   }
   let n = list.length()
+  println("GML: BEFORE: huffman_code.go: bitCounts: len(list)=\{list.length()}")
   let list = list[0:n + 1]
+  println("GML: AFTER: huffman_code.go: bitCounts: len(list)=\{list.length()}")
   list[n] = max_node()
 
   // The tree can't have greater depth than n - 1, no matter what. This
@@ -202,7 +204,7 @@ fn bit_counts(
     abort("leaf_counts[max_bits][max_bits] != n")
   }
   // 	bitCount := h.bitCount[:maxBits+1]
-  let bit_count = self.bit_count[:max_bits + 1]
+  let bit_count = Slice::new(self.bit_count)[:max_bits + 1]
   let mut bits = 1
   let counts = leaf_counts[max_bits]
   for level = max_bits; level > 0; level = level - 1 {
@@ -211,15 +213,15 @@ fn bit_counts(
     bit_count[bits] = counts[level] - counts[level - 1]
     bits += 1
   }
-  bit_count[:]
+  bit_count
 }
 
 // Look at the leaves and assign them a bit count and an encoding as specified
 // in RFC 1951 3.2.2
 fn assign_encoding_and_size(
   self : HuffmanEncoder,
-  bit_count : ArrayView[Int],
-  list : ArrayView[LiteralNode]
+  bit_count : Slice[Int],
+  list : Slice[LiteralNode]
 ) -> Unit {
   let mut list = list
   let mut code = 0
@@ -250,24 +252,20 @@ fn reverse_bits(number : UInt, bit_length : Byte) -> UInt {
   return reverse16(number << (16 - bit_length.to_int()))
 }
 
-fn generate(
-  self : HuffmanEncoder,
-  freq : ArrayView[Int],
-  max_bits : Int
-) -> Unit {
+fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
   if self.freqcache.length() == 0 {
     // Allocate a reusable buffer with the longest possible frequency table.
     // Possible lengths are codegenCodeCount, offsetCodeCount and max_num_lit.
     // The largest of these is max_num_lit, so we allocate for that case.
     self.freqcache = Array::make(max_num_lit + 1, { literal: 0, freq: 0 })
   }
-  let mut list = self.freqcache[:freq.length() + 1]
+  let mut list = Slice::new(self.freqcache)[:freq.length() + 1]
   // Number of non-zero literals
   let mut count = 0
   // Set list to be the set of all non-zero literals and their frequencies
   for i, f in freq {
     if f != 0 {
-      list[count] = { literal: i.reinterpret_as_uint() & 0xfff, freq: f }
+      list[count] = { literal: (i & 0xffff).reinterpret_as_uint(), freq: f }
       count += 1
     } else {
       self.codes[i].len = 0
@@ -280,7 +278,7 @@ fn generate(
     for i, node in list {
       // "list" is in order of increasing literal value.
       self.codes[node.literal.reinterpret_as_int() & 0xffff] = {
-        code: i.reinterpret_as_uint() & 0xffff,
+        code: (i & 0xffff).reinterpret_as_uint(),
         len: 1,
       }
     }

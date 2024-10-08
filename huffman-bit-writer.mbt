@@ -333,13 +333,13 @@ fn dynamic_size(
     5 +
     4 +
     3 * num_codegens +
-    self.codegen_encoding.bit_length(self.codegen_freq[:]) +
+    self.codegen_encoding.bit_length(Slice::new(self.codegen_freq)) +
     self.codegen_freq[16] * 2 +
     self.codegen_freq[17] * 3 +
     self.codegen_freq[18] * 7
   let size = header +
-    lit_enc.bit_length(self.literal_freq[:]) +
-    off_enc.bit_length(self.offset_freq[:]) +
+    lit_enc.bit_length(Slice::new(self.literal_freq)) +
+    off_enc.bit_length(Slice::new(self.offset_freq)) +
     extra_bits
   (size, num_codegens)
 }
@@ -347,8 +347,8 @@ fn dynamic_size(
 // fixed_size returns the size of dynamically encoded data in bits.
 fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
   3 +
-  fixed_literal_encoding.bit_length(self.literal_freq[:]) +
-  fixed_offset_encoding.bit_length(self.offset_freq[:]) +
+  fixed_literal_encoding.bit_length(Slice::new(self.literal_freq)) +
+  fixed_offset_encoding.bit_length(Slice::new(self.offset_freq)) +
   extra_bits
 }
 
@@ -488,7 +488,7 @@ fn write_block_huff(
   let num_literals = end_block_marker + 1
   self.offset_freq[0] = 1
   let num_offsets = 1
-  self.literal_encoding.generate(self.literal_freq[:], 15)
+  self.literal_encoding.generate(Slice::new(self.literal_freq), 15)
 
   // Figure out smallest code.
   // Always use dynamic Huffman or Store
@@ -502,7 +502,7 @@ fn write_block_huff(
     self.literal_encoding,
     huff_offset,
   )
-  self.codegen_encoding.generate(self.codegen_freq[:], 7)
+  self.codegen_encoding.generate(Slice::new(self.codegen_freq), 7)
   let (size, num_codegens) = self.dynamic_size(
     self.literal_encoding,
     huff_offset,
@@ -582,7 +582,7 @@ fn write_block_dynamic(
     self.literal_encoding,
     self.offset_encoding,
   )
-  self.codegen_encoding.generate(self.codegen_freq[:], 7)
+  self.codegen_encoding.generate(Slice::new(self.codegen_freq), 7)
   let (size, numCodegens) = self.dynamic_size(
     self.literal_encoding,
     self.offset_encoding,
@@ -646,8 +646,8 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
     self.offset_freq[0] = 1
     num_offsets = 1
   }
-  self.literal_encoding.generate(self.literal_freq[:], 15)
-  self.offset_encoding.generate(self.offset_freq[:], 15)
+  self.literal_encoding.generate(Slice::new(self.literal_freq), 15)
+  self.offset_encoding.generate(Slice::new(self.offset_freq), 15)
   (num_literals, num_offsets)
 }
 

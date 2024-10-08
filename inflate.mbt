@@ -115,7 +115,7 @@ struct HuffmanDecoder {
 /// tree (i.e., neither over-subscribed nor under-subscribed). The exception is a
 /// degenerate case where the tree has only a single symbol with length 1. Empty
 /// trees are permitted.
-fn initialize(self : HuffmanDecoder, lengths : ArrayView[Int]) -> Bool {
+fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   // Sanity enables additional runtime tests during Huffman
   // table construction. It's intended to be used during
   // development to supplement the currently ad-hoc unit tests.
@@ -306,7 +306,7 @@ struct Decompressor {
   mut step_state : StepState
   mut final : Bool
   mut err : Error?
-  mut to_read : ArrayView[Byte] // []byte
+  mut to_read : Slice[Byte] // []byte
   mut hl : HuffmanDecoder
   mut hd : HuffmanDecoder?
   mut copy_len : Int
@@ -330,13 +330,13 @@ fn Decompressor::new(r : IOReader) -> Decompressor {
     h2: fixed_huffman_decoder,
     bits: Array::make(max_num_lit + max_num_dist, 0),
     codebits: Array::make(num_codes, 0),
-    dict: DictDecoder::new(max_match_offset, [][:]),
+    dict: DictDecoder::new(max_match_offset, Slice::new([])),
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
     step: next_block,
     step_state: StateInit,
     final: false,
     err: None,
-    to_read: [][:],
+    to_read: Slice::new([]),
     hl: fixed_huffman_decoder,
     hd: Some(fixed_huffman_decoder),
     copy_len: 0,
@@ -471,7 +471,7 @@ fn read_huffman(self : Decompressor) -> Error? {
   for i = nclen; i < code_order.length(); i = i + 1 {
     self.codebits[code_order[i]] = 0
   }
-  if not(self.h1.initialize(self.codebits[0:])) {
+  if not(self.h1.initialize(Slice::new(self.codebits))) {
     return Some(CorruptInputError(self.roffset))
   }
 
@@ -535,8 +535,8 @@ fn read_huffman(self : Decompressor) -> Error? {
   }
 
   //
-  if not(self.h1.initialize(self.bits[0:nlit])) ||
-    not(self.h2.initialize(self.bits[nlit:nlit + ndist])) {
+  if not(self.h1.initialize(Slice::new(self.bits)[0:nlit])) ||
+    not(self.h2.initialize(Slice::new(self.bits)[nlit:nlit + ndist])) {
     return Some(CorruptInputError(self.roffset))
   }
 
@@ -712,7 +712,7 @@ fn data_block(self : Decompressor) -> Unit {
 
   // Length then ones-complement of length.
   let nr = try {
-    self.r.read_full!(self.buf[0:4])
+    self.r.read_full!(Slice::new(self.buf)[0:4])
   } catch {
     err => {
       self.err = Some(no_eof(err))
@@ -853,7 +853,7 @@ fn make_reader(self : Decompressor, r : IOReader) -> Unit {
   self.r = r
 }
 
-fn reset(self : Decompressor, r : IOReader, dict : ArrayView[Byte]) -> Unit {
+fn reset(self : Decompressor, r : IOReader, dict : Slice[Byte]) -> Unit {
   self.r = r
   self.roffset = 0
   self.b = 0
@@ -863,7 +863,7 @@ fn reset(self : Decompressor, r : IOReader, dict : ArrayView[Byte]) -> Unit {
   self.step_state = StateInit
   self.final = false
   self.err = None
-  self.to_read = [][:]
+  self.to_read = Slice::new([])
   self.hl = fixed_huffman_decoder
   self.hd = Some(fixed_huffman_decoder)
   self.copy_len = 0
