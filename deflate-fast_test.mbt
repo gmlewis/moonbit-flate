@@ -42,7 +42,7 @@ test "TestBestSpeed" {
   ]
   for tc in test_cases {
     for first_n in [1, 65534, 65535, 65536, 65537, 131072] {
-      println("tc=\{tc}, first_n=\{first_n}")
+      println("\ntc=\{tc}, first_n=\{first_n}")
       tc[0] = first_n
       let buf = Buffer::new()
       let want = Buffer::new()
@@ -51,7 +51,7 @@ test "TestBestSpeed" {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
         want.write_bytes(subset)
-        println("w.write!: subset=\{@flate.dump_bytes(subset)}")
+        // println("w.write!: subset=\{@flate.dump_bytes(subset)}")
         let _ = w.write!(subset)
         // if not(flush) {
         // continue
@@ -59,7 +59,7 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      println("want (\{want.length()} bytes)=\{@flate.dump_bytes(want)}")
+      println("want (\{want.length()} bytes)") // "=\{@flate.dump_bytes(want)}")
       w.close!()
 
       //

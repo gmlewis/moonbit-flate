@@ -98,6 +98,9 @@ fn bit_counts(
   list : Slice[LiteralNode],
   max_bits : Int
 ) -> Slice[Int] {
+  println(
+    "GML: huffman_code.go: (h *huffmanEncoder) bitCounts(list (len=\{list.length()}), maxBits=\{max_bits}) []int32 {",
+  )
   if max_bits >= max_bits_limit {
     abort("flate: max_bits too large")
   }
@@ -127,6 +130,13 @@ fn bit_counts(
     max_bits_limit,
     FixedArray::make(max_bits_limit, 0),
   ) // [max_bits_limit][max_bits_limit]Int
+  // Is this a MoonBit bug? Need to make unique arrays or else they will
+  // all refer to the same one.
+  for i = 0; i < max_bits_limit; i = i + 1 {
+    leaf_counts[i] = FixedArray::make(max_bits_limit, 0)
+  }
+
+  //
   for level = 1; level <= max_bits; level = level + 1 {
     // For every level, the first two items are the first two characters.
     // We initialize the levels as if we had already figured this out.
@@ -138,57 +148,81 @@ fn bit_counts(
       needed: 0,
     }
     leaf_counts[level][level] = 2
+    println("GML: bitCounts: leftCounts[\{level}][\{level}] = 2")
     if level == 1 {
       levels[level].next_pair_freq = @int.max_value
     }
+    println(
+      "GML: bitCounts: levels[\{level}] = {level: \{levels[level].level}, lastFreq: \{levels[level].last_freq}, nextCharFreq: \{levels[level].next_char_freq}, nextPairFreq: \{levels[level].next_pair_freq}, needed: \{levels[level].needed}}",
+    )
   }
 
   // We need a total of 2*n - 2 items at top level and have already generated 2.
   levels[max_bits].needed = 2 * n - 4
+  println(
+    "GML: bitCounts: levels[\{max_bits}].needed = \{levels[max_bits].needed}",
+  )
+
+  //
   let mut level = max_bits
   for {
-    let l = levels[level]
-    if l.next_pair_freq == @int.max_value && l.next_char_freq == @int.max_value {
+    println("GML: bitCounts: level=\{level}")
+    // let l = levels[level]
+    if levels[level].next_pair_freq == @int.max_value &&
+      levels[level].next_char_freq == @int.max_value {
       // We've run out of both leafs and pairs.
       // End all calculations for this level.
       // To make sure we never come back to this level or any lower level,
       // set next_pair_freq impossibly large.
-      l.needed = 0
+      levels[level].needed = 0
       levels[level + 1].next_pair_freq = @int.max_value
       level += 1
+      println(
+        "GML: bitCounts: levels[\{level}].nextPairFreq = \{levels[level].next_pair_freq} - continue",
+      )
       continue
     }
-    let prev_freq = l.last_freq
-    if l.next_char_freq < l.next_pair_freq {
+
+    //
+    let prev_freq = levels[level].last_freq
+    if levels[level].next_char_freq < levels[level].next_pair_freq {
       // The next item on this row is a leaf node.
       let n = leaf_counts[level][level] + 1
-      l.last_freq = l.next_char_freq
+      levels[level].last_freq = levels[level].next_char_freq
       // Lower leaf_counts are the same of the previous node.
       leaf_counts[level][level] = n
-      l.next_char_freq = list[n].freq
+      println("GML: bitCounts: leftCounts[\{level}][\{level}] = n (\{n})")
+      levels[level].next_char_freq = list[n].freq
     } else {
       // The next item on this row is a pair from the previous row.
       // next_pair_freq isn't valid until we generate two
       // more values in the level below
-      l.last_freq = l.next_pair_freq
+      levels[level].last_freq = levels[level].next_pair_freq
       // Take leaf counts from the lower level, except counts[level] remains the same.
+      println(
+        "GML: bitCounts: copy(leafCounts[\{level}][:\{level}], leafCounts[\{level-1}][:\{level}])",
+      )
       // copy(leaf_counts[level][:level], leaf_counts[level - 1][:level])
       for i in 0..<level {
         leaf_counts[level][i] = leaf_counts[level - 1][i]
       }
-      levels[l.level - 1].needed = 2
+      levels[levels[level].level - 1].needed = 2
     }
-    l.needed -= 1
-    if l.needed == 0 {
+
+    //
+    levels[level].needed -= 1
+    if levels[level].needed == 0 {
       // We've done everything we need to do for this level.
       // Continue calculating one level up. Fill in next_pair_freq
       // of that level with the sum of the two nodes we've just calculated on
       // this level.
-      if l.level == max_bits {
+      if levels[level].level == max_bits {
+        println("GML: bitCounts: All done!")
         // All done!
         break
       }
-      levels[l.level + 1].next_pair_freq = prev_freq + l.last_freq
+      levels[levels[level].level + 1].next_pair_freq = prev_freq +
+        levels[level].last_freq
       level += 1
     } else {
       // If we stole from below, move down temporarily to replenish it.
@@ -211,6 +245,9 @@ fn bit_counts(
     // chain.leafCount gives the number of literals requiring at least "bits"
     // bits to encode.
     bit_count[bits] = counts[level] - counts[level - 1]
+    println(
+      "GML: bitCounts: bitCount[\{bits}] = \{bit_count[bits]} = \{counts[level]} - \{counts[level-1]}",
+    )
     bits += 1
   }
   bit_count
@@ -223,12 +260,17 @@ fn assign_encoding_and_size(
   bit_count : Slice[Int],
   list : Slice[LiteralNode]
 ) -> Unit {
+  println(
+    "GML: huffman_code.go: (h *huffmanEncoder) assignEncodingAndSize(bitCount (len=\{bit_count.length()}), list (len=\{list.length()})) {",
+  )
   let mut list = list
   let mut code = 0
   // for n, bits := range bit_count {
   for n, bits in bit_count {
+    println("GML: assignEncodingAndSize: n=\{n}, bits=\{bits}")
     code = code << 1
     if n == 0 || bits == 0 {
+      println("GML: assignEncodingAndSize: continue")
       continue
     }
     // The literals list[len(list)-bits] .. list[len(list)-bits]
@@ -236,12 +278,22 @@ fn assign_encoding_and_size(
     // code, code + 1, ....  The code values are
     // assigned in literal order (not frequency order).
     let chunk = list[list.length() - bits:]
-    quick_sort_by(chunk, by_literal, None, get_limit(chunk.length()))
+    println(
+      "GML: assignEncodingAndSize: sorting: len(list)=\{(list.length())}, bits=\{bits}, len(chunk)=\{(chunk.length())}",
+    )
+    // quick_sort_by(chunk, by_literal, None, get_limit(chunk.length()))
+    quicksort(chunk, by_literal)
     for node in chunk {
-      self.codes[node.literal.reinterpret_as_int()] = {
-        code: reverse_bits(code.reinterpret_as_uint() & 0xffff, n.to_byte()),
-        len: n.reinterpret_as_uint(),
-      }
+      let key = node.literal.reinterpret_as_int()
+      let debug_code = reverse_bits(
+        code.reinterpret_as_uint() & 0xffff,
+        n.to_byte(),
+      )
+      let len = n.reinterpret_as_uint()
+      println(
+        "GML: assignEncodingAndSize: self.codes[\{key}] = hcode{code: \{debug_code}, len: \{len}}",
+      )
+      self.codes[key] = { code: debug_code, len }
       code += 1
     }
     list = list[0:list.length() - bits]
@@ -249,14 +301,27 @@ fn assign_encoding_and_size(
 }
 
 fn reverse_bits(number : UInt, bit_length : Byte) -> UInt {
-  return reverse16(number << (16 - bit_length.to_int()))
+  let v = reverse16(number << (16 - bit_length.to_int()))
+  println(
+    "GML: huffman_code.go: reverseBits(number=\{number}, bitLength=\{bit_length.to_int()}) = \{v}",
+  )
+  return v
+}
+
+test "reverse_bits works" {
+  let got = reverse_bits(64, b'\x07')
+  inspect!(got, content="1")
 }
 
 fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
+  println(
+    "GML: huffman_code.go: (h *huffmanEncoder) generate(freq (len=\{freq.length()}), maxBits=\{max_bits}) {",
+  )
   if self.freqcache.length() == 0 {
     // Allocate a reusable buffer with the longest possible frequency table.
     // Possible lengths are codegenCodeCount, offsetCodeCount and max_num_lit.
     // The largest of these is max_num_lit, so we allocate for that case.
+    println("GML: generate: new self.freqcache")
     self.freqcache = Array::make(max_num_lit + 1, { literal: 0, freq: 0 })
   }
   let mut list = Slice::new(self.freqcache)[:freq.length() + 1]
@@ -264,6 +329,7 @@ fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
   let mut count = 0
   // Set list to be the set of all non-zero literals and their frequencies
   for i, f in freq {
+    println("GML: generate: i=\{i}, f=\{f}")
     if f != 0 {
       list[count] = { literal: (i & 0xffff).reinterpret_as_uint(), freq: f }
       count += 1
@@ -271,36 +337,50 @@ fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
       self.codes[i].len = 0
     }
   }
+
+  //
   list = list[:count]
+  println("GML: generate: count=\{count}")
   if count <= 2 {
     // Handle the small cases here, because they are awkward for the general case code. With
     // two or fewer literals, everything has bit length 1.
     for i, node in list {
       // "list" is in order of increasing literal value.
-      self.codes[node.literal.reinterpret_as_int() & 0xffff] = {
-        code: (i & 0xffff).reinterpret_as_uint(),
-        len: 1,
-      }
+      let key = node.literal.reinterpret_as_int() & 0xffff
+      let code = (i & 0xffff).reinterpret_as_uint()
+      println("GML: generate: self.codes[\{key}].set(\{code},1)")
+      self.codes[key] = { code, len: 1 }
     }
+    println("GML: generate: return")
     return
   }
-  quick_sort_by(list, by_frequency, None, get_limit(list.length()))
+  println("GML: huffman_code.go: (s *byFreq) sort(a (len=\{list.length()})) {")
+  // quick_sort_by(list, by_frequency, None, get_limit(list.length()))
+  quicksort(list, by_frequency)
+  for i = 0; i < list.length(); i = i + 1 {
+    println(
+      "GML: generate: list[\{i}] = {literal: \{list[i].literal}, freq: \{list[i].freq}}",
+    )
+  }
 
   // Get the number of literals for each bit count
   let bit_count = self.bit_counts(list, max_bits)
+  for i = 0; i < bit_count.length(); i = i + 1 {
+    println("GML: generate: bitCount[\{i}] = \{bit_count[i]}")
+  }
   // And do the assignment
   self.assign_encoding_and_size(bit_count, list)
 }
 
-fn by_frequency(a : LiteralNode, b : LiteralNode) -> Int {
+fn by_frequency(a : LiteralNode, b : LiteralNode) -> Bool {
   if a.freq == b.freq {
-    return a.literal.reinterpret_as_int() - b.literal.reinterpret_as_int()
+    return a.literal.reinterpret_as_int() < b.literal.reinterpret_as_int()
   }
-  return a.freq - b.freq
+  return a.freq < b.freq
 }
 
-fn by_literal(a : LiteralNode, b : LiteralNode) -> Int {
-  return a.literal.reinterpret_as_int() - b.literal.reinterpret_as_int()
+fn by_literal(a : LiteralNode, b : LiteralNode) -> Bool {
+  return a.literal.reinterpret_as_int() < b.literal.reinterpret_as_int()
 }
 
 let fixed_literal_encoding : HuffmanEncoder = {

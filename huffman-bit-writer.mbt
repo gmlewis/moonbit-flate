@@ -158,14 +158,14 @@ fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
 
 fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
   println(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBits(b int32, nb uint) {: b=\{b}, nb=\{nb}, self.bits=\{self.bits}",
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBits(b int32, nb uint) {: b=\{b}, nb=\{nb}, self.bits=\{self.bits}, self.nbits=\{self.nbits}",
   )
   if not(self.err.is_empty()) {
     return
   }
   self.bits = self.bits |
     (b.reinterpret_as_uint().to_uint64() << self.nbits.reinterpret_as_int())
-  println("GML: huffman_bit_writer.go: writeBits: w.bits=\{self.bits}")
+  println("GML: huffman_bit_writer.go: writeBits: self.bits=\{self.bits}")
   self.nbits += nb
   if self.nbits >= 48 {
     let bits = self.bits
@@ -237,7 +237,7 @@ fn generate_codegen(
   for i in self.codegen_freq {
     self.codegen_freq[i] = 0
   }
-  println("GML: generate_codegen: B")
+  // println("GML: generate_codegen: B")
   // Note that we are using codegen both as a temporary variable for holding
   // a copy of the frequencies, and as the place where we put the result.
   // This is fine because the output is always shorter than the input used
@@ -245,28 +245,28 @@ fn generate_codegen(
   let codegen = self.codegen // cache
   // Copy the concatenated code sizes to codegen. Put a marker at the end.
   // let cgnl = codegen[:num_literals]
-  println("GML: generate_codegen: C")
+  // println("GML: generate_codegen: C")
   for i in 0..<num_literals {
     codegen[i] = lit_enc.codes[i].len.to_byte()
   }
-  println(
-    "GML: generate_codegen: D: off_enc.codes.length()=\{off_enc.codes.length()}, codegen.length()=\{codegen.length()}",
-  )
+  // println(
+  //   "GML: generate_codegen: D: off_enc.codes.length()=\{off_enc.codes.length()}, codegen.length()=\{codegen.length()}",
+  // )
 
   // cgnl = codegen[num_literals : num_literals+num_offsets]
   for i in 0..<num_offsets {
-    println("GML: generate_codegen: D1: i=\{i}")
+    // println("GML: generate_codegen: D1: i=\{i}")
     codegen[num_literals + i] = off_enc.codes[i].len.to_byte()
   }
-  println("GML: generate_codegen: E")
+  // println("GML: generate_codegen: E")
   codegen[num_literals + num_offsets] = bad_code
-  println("GML: generate_codegen: F")
+  // println("GML: generate_codegen: F")
   let mut size = codegen[0]
-  println("GML: generate_codegen: G")
+  // println("GML: generate_codegen: G")
   let mut count = 1
   let mut out_index = 0
   for in_index = 1; size != bad_code; in_index = in_index + 1 {
-    println("GML: generate_codegen: H")
+    // println("GML: generate_codegen: H")
     // INVARIANT: We have seen "count" copies of size that have not yet
     // had output generated for them.
     let nextSize = codegen[in_index]
@@ -274,16 +274,16 @@ fn generate_codegen(
       count += 1
       continue
     }
-    println("GML: generate_codegen: I")
+    // println("GML: generate_codegen: I")
     // We need to generate codegen indicating "count" of size.
     if size != b'\x00' {
       codegen[out_index] = size
       out_index += 1
       self.codegen_freq[size.to_int()] += 1
       count -= 1
-      println("GML: generate_codegen: J")
+      // println("GML: generate_codegen: J")
       while count >= 3 {
-        println("GML: generate_codegen: J1")
+        // println("GML: generate_codegen: J1")
         let mut n = 6
         if n > count {
           n = count
@@ -294,13 +294,13 @@ fn generate_codegen(
         out_index += 1
         self.codegen_freq[16] += 1
         count -= n
-        println("GML: generate_codegen: K")
+        // println("GML: generate_codegen: K")
       }
-      println("GML: generate_codegen: L")
+      // println("GML: generate_codegen: L")
     } else {
-      println("GML: generate_codegen: M")
+      // println("GML: generate_codegen: M")
       while count >= 11 {
-        println("GML: generate_codegen: M1")
+        // println("GML: generate_codegen: M1")
         let mut n = 138
         if n > count {
           n = count
@@ -311,11 +311,11 @@ fn generate_codegen(
         out_index += 1
         self.codegen_freq[18] += 1
         count -= n
-        println("GML: generate_codegen: N")
+        // println("GML: generate_codegen: N")
       }
-      println("GML: generate_codegen: O")
+      // println("GML: generate_codegen: O")
       if count >= 3 {
-        println("GML: generate_codegen: P")
+        // println("GML: generate_codegen: P")
         // count >= 3 && count <= 10
         codegen[out_index] = b'\x11' // 17
         out_index += 1
@@ -324,23 +324,23 @@ fn generate_codegen(
         self.codegen_freq[17] += 1
         count = 0
       }
-      println("GML: generate_codegen: Q")
+      // println("GML: generate_codegen: Q")
     }
-    println("GML: generate_codegen: R")
+    // println("GML: generate_codegen: R")
     count -= 1
     for count = count; count >= 0; count = count - 1 {
-      println("GML: generate_codegen: S")
+      // println("GML: generate_codegen: S")
       codegen[out_index] = size
       out_index += 1
       self.codegen_freq[size.to_int()] += 1
     }
-    println("GML: generate_codegen: T")
+    // println("GML: generate_codegen: T")
     // Set up invariant for next time through the loop.
     size = nextSize
     count = 1
-    println("GML: generate_codegen: U")
+    // println("GML: generate_codegen: U")
   }
-  println("GML: generate_codegen: V")
+  // println("GML: generate_codegen: V")
   // Marker indicating the end of the codegen.
   codegen[out_index] = bad_code
 }
@@ -437,6 +437,9 @@ fn write_dynamic_header(
   num_codegens : Int,
   is_eof : Bool
 ) -> Unit {
+  println(
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeDynamicHeader(numLiterals=\{num_literals}, numOffsets=\{num_offsets}, numCodegens=\{num_codegens}, isEof=\{is_eof}) {",
+  )
   if not(self.err.is_empty()) {
     return
   }

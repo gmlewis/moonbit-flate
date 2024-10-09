@@ -74,8 +74,10 @@ fn load64(b : Bytes, i : Int) -> UInt64 {
     (b[i + 7].to_uint().to_uint64() << 56)
 }
 
-fn hash(u : UInt) -> Int {
-  return ((u * 0x1e35a7bd) >> table_shift).reinterpret_as_int()
+fn hash(u : UInt) -> Int { // uint32 - but always used as int below
+  let v = (u * 0x1e35a7bd) >> table_shift
+  println("GML: deflate-fast.mbt: hash(u=\{u}) = \{v}")
+  return v.reinterpret_as_int()
 }
 
 // These constants are defined by the Snappy implementation so that its
