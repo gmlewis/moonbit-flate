@@ -59,7 +59,7 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      println("want=\{@flate.dump_bytes(want)}")
+      println("want (\{want.length()} bytes)=\{@flate.dump_bytes(want)}")
       w.close!()
 
       //

@@ -231,9 +231,13 @@ fn generate_codegen(
   lit_enc : HuffmanEncoder,
   off_enc : HuffmanEncoder
 ) -> Unit {
+  println(
+    "GML: generate_codegen(num_literals=\{num_literals}, num_offsets=\{num_offsets}): A",
+  )
   for i in self.codegen_freq {
     self.codegen_freq[i] = 0
   }
+  println("GML: generate_codegen: B")
   // Note that we are using codegen both as a temporary variable for holding
   // a copy of the frequencies, and as the place where we put the result.
   // This is fine because the output is always shorter than the input used
@@ -241,19 +245,28 @@ fn generate_codegen(
   let codegen = self.codegen // cache
   // Copy the concatenated code sizes to codegen. Put a marker at the end.
   // let cgnl = codegen[:num_literals]
+  println("GML: generate_codegen: C")
   for i in 0..<num_literals {
     codegen[i] = lit_enc.codes[i].len.to_byte()
   }
+  println(
+    "GML: generate_codegen: D: off_enc.codes.length()=\{off_enc.codes.length()}, codegen.length()=\{codegen.length()}",
+  )
 
   // cgnl = codegen[num_literals : num_literals+num_offsets]
-  for i in num_literals..<(num_literals + num_offsets) {
-    codegen[i] = off_enc.codes[i].len.to_byte()
+  for i in 0..<num_offsets {
+    println("GML: generate_codegen: D1: i=\{i}")
+    codegen[num_literals + i] = off_enc.codes[i].len.to_byte()
   }
+  println("GML: generate_codegen: E")
   codegen[num_literals + num_offsets] = bad_code
+  println("GML: generate_codegen: F")
   let mut size = codegen[0]
+  println("GML: generate_codegen: G")
   let mut count = 1
   let mut out_index = 0
   for in_index = 1; size != bad_code; in_index = in_index + 1 {
+    println("GML: generate_codegen: H")
     // INVARIANT: We have seen "count" copies of size that have not yet
     // had output generated for them.
     let nextSize = codegen[in_index]
@@ -261,13 +274,16 @@ fn generate_codegen(
       count += 1
       continue
     }
+    println("GML: generate_codegen: I")
     // We need to generate codegen indicating "count" of size.
     if size != b'\x00' {
       codegen[out_index] = size
       out_index += 1
       self.codegen_freq[size.to_int()] += 1
       count -= 1
+      println("GML: generate_codegen: J")
       while count >= 3 {
+        println("GML: generate_codegen: J1")
         let mut n = 6
         if n > count {
           n = count
@@ -278,9 +294,13 @@ fn generate_codegen(
         out_index += 1
         self.codegen_freq[16] += 1
         count -= n
+        println("GML: generate_codegen: K")
       }
+      println("GML: generate_codegen: L")
     } else {
+      println("GML: generate_codegen: M")
       while count >= 11 {
+        println("GML: generate_codegen: M1")
         let mut n = 138
         if n > count {
           n = count
@@ -291,8 +311,11 @@ fn generate_codegen(
         out_index += 1
         self.codegen_freq[18] += 1
         count -= n
+        println("GML: generate_codegen: N")
       }
+      println("GML: generate_codegen: O")
       if count >= 3 {
+        println("GML: generate_codegen: P")
         // count >= 3 && count <= 10
         codegen[out_index] = b'\x11' // 17
         out_index += 1
@@ -301,17 +324,23 @@ fn generate_codegen(
         self.codegen_freq[17] += 1
         count = 0
       }
+      println("GML: generate_codegen: Q")
     }
+    println("GML: generate_codegen: R")
     count -= 1
     for count = count; count >= 0; count = count - 1 {
+      println("GML: generate_codegen: S")
       codegen[out_index] = size
       out_index += 1
       self.codegen_freq[size.to_int()] += 1
     }
+    println("GML: generate_codegen: T")
     // Set up invariant for next time through the loop.
     size = nextSize
     count = 1
+    println("GML: generate_codegen: U")
   }
+  println("GML: generate_codegen: V")
   // Marker indicating the end of the codegen.
   codegen[out_index] = bad_code
 }
