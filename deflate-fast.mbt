@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 /// This file is based on the Go implementation found here:
 /// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflatefast.go
 /// which has the copyright notice:

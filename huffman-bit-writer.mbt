@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 /// This file is based on the Go implementation found here:
 /// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/huffman_bit_writer.go
 /// which has the copyright notice:
@@ -237,7 +239,7 @@ fn generate_codegen(
   gmldbg(
     "GML: huffman_bit_writer.go: (w *huffmanBitWriter) generateCodegen(numLiterals=\{num_literals}, numOffsets=\{num_offsets}, litEnc, offEnc *huffmanEncoder) {",
   )
-  for i in self.codegen_freq {
+  for i in 0..<self.codegen_freq.length() {
     self.codegen_freq[i] = 0
   }
   // gmldbg("GML: generate_codegen: B")

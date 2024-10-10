@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 /// This file is based on the Go implementation found here:
 /// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/huffman_code.go
 /// which has the copyright notice:
@@ -60,6 +62,7 @@ fn LevelInfo::new() -> LevelInfo {
 
 // set sets the code and length of an hcode.
 fn set(self : HCode, code : UInt, length : UInt) -> Unit {
+  gmldbg("GML: huffman_code.go: (h *hcode) set(code uint16, length uint16) {")
   self.len = length
   self.code = code
 }
@@ -357,7 +360,7 @@ fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
       let key = node.literal.reinterpret_as_int() & 0xffff
       let code = (i & 0xffff).reinterpret_as_uint()
       gmldbg("GML: generate: self.codes[\{key}].set(\{code},1)")
-      self.codes[key] = { code, len: 1 }
+      self.codes[key].set(code, 1)
     }
     gmldbg("GML: generate: return")
     return

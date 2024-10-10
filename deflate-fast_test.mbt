@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 /// This file is based on the Go implementation found here:
 /// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflate_test.go
 /// which has the copyright notice:
@@ -40,7 +42,7 @@ test "TestBestSpeed" {
     [65536, 65536, 256],
     [65536, 65536, 65536],
   ]
-  let broken = { 0: false, 4: true }
+  let broken = { 0: false, 6: true }
 
   //
   let mut i = 0
