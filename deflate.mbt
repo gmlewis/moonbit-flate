@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 /// This file is based on the Go implementation found here:
 /// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflate.go
 /// which has the copyright notice:
@@ -110,13 +112,14 @@ fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
 }
 
 fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
-  gmldbg("GML: deflate.go: d *compressor) fillStore(b []byte) int {")
-  let n = b.length()
+  gmldbg("GML: deflate.go: d *compressor) fillStore(b []byte) int { // BEFORE copy: d.windowEnd=\{self.window_end}, len(b)=\{b.length()}")
+  let n = minimum(self.window.length()-self.window_end, b.length())
   // let n = copy(self.window[self.window_end:], b)
   for i in 0..<n {
     self.window[self.window_end + i] = b[i]
   }
   self.window_end += n
+  gmldbg("GML: deflate.go: d *compressor) fillStore(b []byte) int { // AFTER copy: d.windowEnd=\{self.window_end}, n=\{n}")
   n
 }
 
@@ -171,8 +174,11 @@ pub fn write(self : Compressor, b : Bytes) -> Int!Error {
   let mut b : Slice[Byte] = Slice::new(Array::from_iter(b.iter()))
   let n = b.length()
   while b.length() > 0 {
+    gmldbg("GML: deflate.go: d *compressor) write: BEFORE calling d.step: len(b)=\{b.length()}")
     self.enc_speed()
+    gmldbg("GML: deflate.go: d *compressor) write: BEFORE calling d.fill: len(b)=\{b.length()}")
     b = b[self.fill_store(b):]
+    gmldbg("GML: deflate.go: d *compressor) write: AFTER calling d.fill: len(b)=\{b.length()}")
     if not(self.err.is_empty()) {
       raise self.err.unwrap()
     }
