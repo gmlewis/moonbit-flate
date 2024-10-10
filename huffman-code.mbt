@@ -19,6 +19,11 @@ struct HuffmanEncoder {
 fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
   gmldbg("GML: huffman_code.go: newHuffmanEncoder(size=\{size}) *huffmanEncoder {")
   let codes = Array::make(size, { code: 0U, len: 0U })
+  // Is this a MoonBit bug? Need to make unique arrays or else they will
+  // all refer to the same one.
+  for i = 0; i < size; i = i + 1 {
+    codes[i] = { code: 0U, len: 0U }
+  }
   let freqcache = []
   // let bit_count = FixedArray::make(17, 0)
   let bit_count = Array::make(17, 0)

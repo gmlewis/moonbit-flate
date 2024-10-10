@@ -42,7 +42,7 @@ test "TestBestSpeed" {
     [65536, 65536, 256],
     [65536, 65536, 65536],
   ]
-  let broken = { 0: false, 6: true }
+  let broken = { 0: false, 13: true }
 
   //
   let mut i = 0
