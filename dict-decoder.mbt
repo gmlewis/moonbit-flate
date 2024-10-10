@@ -38,6 +38,9 @@ struct DictDecoder {
 /// size. If a preset dict is provided, it will initialize the dictionary with
 /// the contents of dict.
 fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
+  println(
+    "GML: dict_decoder.go: (dd *dictDecoder) init(size int, dict []byte) {",
+  )
   let dd = {
     hist: Slice::new(Array::make(size, b'\x00')),
     wr_pos: 0,
@@ -66,18 +69,26 @@ fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
 /// hist_size reports the total amount of historical data in the dictionary.
 fn hist_size(self : DictDecoder) -> Int {
   if self.full {
+    println("GML: dict_decoder.go: (dd *dictDecoder) histSize(): dd.full=\{self.full}, len(dd.hist)=\{self.hist.length()}")
     return self.hist.length()
   }
+  println("GML: dict_decoder.go: (dd *dictDecoder) histSize(): dd.full=\{self.full}, dd.wrPos=\{self.wr_pos}")
   self.wr_pos
 }
 
 /// avail_read reports the number of bytes that can be flushed by read_flush.
 fn avail_read(self : DictDecoder) -> Int {
+  println(
+    "GML: dict_decoder.go: (dd *dictDecoder) availRead() int { // dd.rdPos=\{self.rd_pos}, dd.wrPos=\{self.wr_pos}",
+  )
   self.wr_pos - self.rd_pos
 }
 
 /// avail_write reports the available amount of output buffer space.
 fn avail_write(self : DictDecoder) -> Int {
+  println(
+    "GML: dict_decoder.go: (dd *dictDecoder) availWrite() int { // len(dd.hist)=\{self.hist.length()}, dd.wrPos=\{self.wr_pos}",
+  )
   self.hist.length() - self.wr_pos
 }
 
@@ -85,6 +96,7 @@ fn avail_write(self : DictDecoder) -> Int {
 ///
 /// This invariant will be kept: len(s) <= avail_write()
 fn write_slice(self : DictDecoder) -> Slice[Byte] {
+  println("GML: dict_decoder.go: (dd *dictDecoder) writeSlice() []byte {")
   self.hist[self.wr_pos:]
 }
 
@@ -92,6 +104,7 @@ fn write_slice(self : DictDecoder) -> Slice[Byte] {
 ///
 /// This invariant must be kept: 0 <= cnt <= avail_write()
 fn write_mark(self : DictDecoder, cnt : Int) -> Unit {
+  println("GML: dict_decoder.go: (dd *dictDecoder) writeMark(cnt int) {")
   self.wr_pos += cnt
 }
 
@@ -99,6 +112,7 @@ fn write_mark(self : DictDecoder, cnt : Int) -> Unit {
 ///
 /// This invariant must be kept: 0 < avail_write()
 fn write_byte(self : DictDecoder, c : Byte) -> Unit {
+  println("GML: dict_decoder.go: (dd *dictDecoder) writeByte(c byte) {")
   self.hist[self.wr_pos] = c
   self.wr_pos += 1
 }
@@ -109,6 +123,9 @@ fn write_byte(self : DictDecoder, c : Byte) -> Unit {
 ///
 /// This invariant must be kept: 0 < dist <= hist_size()
 fn write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
+  println(
+    "GML: dict_decoder.go: (dd *dictDecoder) writeCopy(dist, length int) int {",
+  )
   let dst_base = self.wr_pos
   let mut dst_pos = dst_base
   let mut src_pos = dst_pos - dist
@@ -150,7 +167,12 @@ fn write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
       self.hist[src_pos:dst_pos],
     )
   }
+
+  //
   self.wr_pos = dst_pos
+  println(
+    "GML: dict_decoder.go: writeCopy: dstPos=\{dst_pos}, dstBase=\{dst_base}, return=\{dst_pos - dst_base}",
+  )
   return dst_pos - dst_base
 }
 
@@ -161,9 +183,15 @@ fn write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
 ///
 /// This invariant must be kept: 0 < dist <= hist_size()
 fn try_write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
+  println(
+    "GML: dict_decoder.go: (dd *dictDecoder) tryWriteCopy(dist=\{dist}, length=\{length}) int { // dd.wrPos=\{self.wr_pos}",
+  )
   let mut dst_pos = self.wr_pos
   let end_pos = dst_pos + length
   if dst_pos < dist || end_pos > self.hist.length() {
+    println(
+      "GML: dict_decoder.go: tryWriteCopy: dstPos=\{dst_pos}, dist=\{dist}, endPos=\{end_pos}, len(dd.hist)=\{self.hist.length()}, return 0",
+    )
     return 0
   }
   let dst_base = dst_pos
@@ -177,6 +205,9 @@ fn try_write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
     )
   }
   self.wr_pos = dst_pos
+  println(
+    "GML: dict_decoder.go: tryWriteCopy: dstPos=\{dst_pos}, dstBase=\{dst_base}, return=\{dst_pos - dst_base}",
+  )
   return dst_pos - dst_base
 }
 
@@ -192,12 +223,16 @@ fn slice_copy(dst : Slice[Byte], src : Slice[Byte]) -> Int {
 /// emitted to the user. The data returned by read_flush must be fully consumed
 /// before calling any other DictDecoder methods.
 fn read_flush(self : DictDecoder) -> Slice[Byte] {
+  println(
+    "GML: dict_decoder.go: (dd *dictDecoder) readFlush() []byte { // dd.rdPos=\{self.rd_pos}, dd.wrPos=\{self.wr_pos}",
+  )
   let to_read = self.hist[self.rd_pos:self.wr_pos]
   self.rd_pos = self.wr_pos
   if self.wr_pos == self.hist.length() {
     self.wr_pos = 0
     self.rd_pos = 0
     self.full = true
+    println("GML: dict_decoder.go: readFlush(): dd.full = true")
   }
   return to_read
 }

@@ -49,6 +49,7 @@ struct Compressor {
 } derive(Show)
 
 fn Compressor::new(buf : Buffer) -> Compressor {
+  println("GML: deflate.go: d *compressor) init(w io.Writer, level int) (err error) {")
   // d.compressionLevel = levels[level]
   let w = HuffmanBitWriter::new(buf)
   {
@@ -67,6 +68,7 @@ fn Compressor::new(buf : Buffer) -> Compressor {
 type! WriterClosedError  derive(Show)
 
 fn close(self : Compressor) -> Unit!Error {
+  println("GML: deflate.go: d *compressor) close() error {")
   match self.err {
     Some(WriterClosedError) => return
     Some(err) => raise err
@@ -92,6 +94,7 @@ fn close(self : Compressor) -> Unit!Error {
 }
 
 fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
+  println("GML: deflate.go: d *compressor) writeStoredBlock(buf []byte) error {")
   self.w.write_stored_header(len, false)
   if not(self.w.err.is_empty()) {
     return self.w.err
@@ -107,6 +110,7 @@ fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
 }
 
 fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
+  println("GML: deflate.go: d *compressor) fillStore(b []byte) int {")
   let n = b.length()
   // let n = copy(self.window[self.window_end:], b)
   for i in 0..<n {
@@ -120,6 +124,7 @@ fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 // if enough has been accumulated or we at the end of the stream.
 // Any error that occurred will be in self.err
 fn enc_speed(self : Compressor) -> Unit {
+  println("GML: deflate.go: d *compressor) encSpeed() {")
   // We only compress if we have max_store_block_size.
   if self.window_end < max_store_block_size {
     if not(self.sync) {
@@ -159,6 +164,7 @@ fn enc_speed(self : Compressor) -> Unit {
 }
 
 pub fn write(self : Compressor, b : Bytes) -> Int!Error {
+  println("GML: deflate.go: d *compressor) write(b []byte) (n int, err error) {")
   if not(self.err.is_empty()) {
     raise self.err.unwrap()
   }

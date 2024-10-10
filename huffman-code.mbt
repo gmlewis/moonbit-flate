@@ -15,6 +15,7 @@ struct HuffmanEncoder {
 } derive(Show, Eq)
 
 fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
+  println("GML: huffman_code.go: newHuffmanEncoder(size=\{size}) *huffmanEncoder {")
   let codes = Array::make(size, { code: 0U, len: 0U })
   let freqcache = []
   // let bit_count = FixedArray::make(17, 0)
@@ -282,6 +283,7 @@ fn assign_encoding_and_size(
     println(
       "GML: assignEncodingAndSize: sorting: len(list)=\{(list.length())}, bits=\{bits}, len(chunk)=\{(chunk.length())}",
     )
+    println("GML: huffman_code.go: (s *byLiteral) sort(a (len=\{chunk.length()})) {")
     // quick_sort_by(chunk, by_literal, None, get_limit(chunk.length()))
     quicksort(chunk, by_literal)
     for node in chunk {

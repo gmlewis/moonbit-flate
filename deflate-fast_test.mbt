@@ -42,7 +42,7 @@ test "TestBestSpeed" {
   ]
   for tc in test_cases {
     for first_n in [1, 65534, 65535, 65536, 65537, 131072] {
-      println("\ntc=\{tc}, first_n=\{first_n}")
+      println("\ntc=\{dump_arr(tc)}, first_n=\{first_n}")
       tc[0] = first_n
       let buf = Buffer::new()
       let want = Buffer::new()
@@ -59,17 +59,23 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      println("want (\{want.length()} bytes)") // "=\{@flate.dump_bytes(want)}")
+      // println("want (\{want.length()} bytes)") // "=\{@flate.dump_bytes(want)}")
       w.close!()
 
       //
-      println("Reader::new: buf=\{dump_buffer(buf)}")
+      let dump = dump_buffer(buf).to_string().replace_all(old=",", new="")
+      println("NewReader: buf=\{dump}")
       let r = @flate.Reader::new(@flate.IOReader::from_buffer(buf))
       let got = r.to_bytes!()
-      println("got=\{@flate.dump_bytes(got)}")
+      let dump = @flate.dump_bytes(got).to_string().replace_all(old=",", new="")
+      println("got=\{dump}")
       assert_eq!(got, want)
     }
   }
+}
+
+fn dump_arr(buf : Array[Int]) -> String {
+   buf.to_string().replace_all(old=",", new="")
 }
 
 fn dump_buffer(buf : Buffer) -> Array[Int] {

@@ -76,7 +76,7 @@ fn load64(b : Bytes, i : Int) -> UInt64 {
 
 fn hash(u : UInt) -> Int { // uint32 - but always used as int below
   let v = (u * 0x1e35a7bd) >> table_shift
-  println("GML: deflate-fast.mbt: hash(u=\{u}) = \{v}")
+  println("GML: deflatefast.go: hash(u=\{u}) = \{v}")
   return v.reinterpret_as_int()
 }
 
@@ -113,6 +113,7 @@ fn DeflateFast::new() -> DeflateFast {
 // encode encodes a block given in src and appends tokens
 // to dst and returns the result.
 fn encode(self : DeflateFast, dst : Array[Token], src : Bytes) -> Array[Token] {
+  println("GML: deflatefast.go: (e *deflateFast) encode(dst []token, src []byte) []token {")
   let mut dst = dst
   // Ensure that self.cur doesn't wrap.
   if self.cur >= bufferReset {
@@ -262,6 +263,7 @@ fn emit_literal(
   ~start : Int = 0,
   ~end : Int = lit.length()
 ) -> Array[Token] {
+  println("GML: deflatefast.go: emitLiteral(dst []token, lit []byte) []token {")
   for i = start; i < end; i = i + 1 {
     let v = lit[i]
     dst.push(literal_token(v.to_uint()))
@@ -273,6 +275,7 @@ fn emit_literal(
 // t can be negative to indicate the match is starting in self.prev.
 // We assume that src[s-4:s] and src[t-4:t] already match.
 fn match_len(self : DeflateFast, s : Int, t : Int, src : Bytes) -> Int {
+  println("GML: deflatefast.go: (e *deflateFast) matchLen(s, t int32, src []byte) int32 {")
   let mut s1 = s + max_match_length - 4
   if s1 > src.length() {
     s1 = src.length()
@@ -340,6 +343,7 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Bytes) -> Int {
 // Reset resets the encoding history.
 // This ensures that no matches are made to the previous block.
 fn reset(self : DeflateFast) -> Unit {
+  println("GML: deflatefast.go: (e *deflateFast) reset() {")
   self.prev = Bytes::new(0)
   // Bump the offset, so all matches will fail distance check.
   // Nothing should be >= self.cur in the table.

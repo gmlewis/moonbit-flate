@@ -87,6 +87,7 @@ struct HuffmanBitWriter {
 } derive(Show)
 
 fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
+  println("GML: huffman_bit_writer.go: newHuffmanBitWriter(w io.Writer) *huffmanBitWriter {")
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
   let codegen = Bytes::make(max_num_lit + offset_code_count + 1, b'\x00')
@@ -114,6 +115,7 @@ fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
 }
 
 fn flush(self : HuffmanBitWriter) -> Unit {
+  println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) flush() {")
   if not(self.err.is_empty()) {
     self.nbits = 0
     return
@@ -145,8 +147,8 @@ fn write(self : HuffmanBitWriter, b : Bytes) -> Unit {
   self.writer.write_bytes(b)
 }
 
-pub fn dump_bytes(buf : Bytes) -> Array[Int] {
-  buf.to_array().map(fn(b) { b.to_int() })
+pub fn dump_bytes(buf : Bytes) -> String {
+  buf.to_array().map(fn(b) { b.to_int() }).to_string().replace_all(old=",", new="")
 }
 
 fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
@@ -190,6 +192,7 @@ fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
 }
 
 fn write_bytes(self : HuffmanBitWriter, bytes : Bytes) -> Unit {
+  println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBytes(bytes (len=\{bytes.length()})) {")
   if not(self.err.is_empty()) {
     return
   }
@@ -370,6 +373,7 @@ fn dynamic_size(
     lit_enc.bit_length(Slice::new(self.literal_freq)) +
     off_enc.bit_length(Slice::new(self.offset_freq)) +
     extra_bits
+  println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) dynamicSize(litEnc, offEnc *huffmanEncoder, extraBits=\{extra_bits}) (size, numCodegens int) = (size=\{size}, numCodegens=\{num_codegens})")
   (size, num_codegens)
 }
 
@@ -386,11 +390,15 @@ fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
 // fits inside a single block.
 fn stored_size(inp_length : Int) -> (Int, Bool) {
   if inp_length == 0 {
+    println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) storedSize(in (\{inp_length} bytes)) = 0 A")
     return (0, false)
   }
   if inp_length <= max_store_block_size {
-    return ((inp_length + 5) * 8, true)
+    let v = (inp_length + 5) * 8
+    println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) storedSize(in (\{inp_length} bytes)) = \{v} B")
+    return (v, true)
   }
+  println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) storedSize(in (\{inp_length} bytes)) = 0 C")
   (0, false)
 }
 
@@ -499,6 +507,7 @@ fn write_stored_header(
   length : Int,
   is_eof : Bool
 ) -> Unit {
+  println("GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeStoredHeader(length=\{length}, isEof=\{is_eof}) {")
   if not(self.err.is_empty()) {
     return
   }
@@ -614,7 +623,7 @@ fn write_block_dynamic(
   input : Bytes
 ) -> Unit {
   println(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBlockDynamic(tokens []token, eof bool, input []byte) {",
+    "\nGML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBlockDynamic(tokens []token, eof bool, input []byte) {",
   )
   if not(self.err.is_empty()) {
     return

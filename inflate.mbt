@@ -49,7 +49,7 @@ impl Show for InternalError with output(self, logger) {
 // }
 
 // func (e *ReadError) Error() string {
-// 	printlnog.Printf("GML: inflate.go: (e *ReadError) Error() string {")
+// 	println("GML: inflate.go: (e *ReadError) Error() string {")
 // 	println: read error at offset " + strconv.FormatInt(e.Offset, 10) + ": " + e.Err.Error()
 // }
 
@@ -62,7 +62,7 @@ impl Show for InternalError with output(self, logger) {
 // }
 
 // func (e *WriteError) Error() string {
-// 	log.Printf("GML: inflate.go: (e *WriteError) Error() string {")
+// 	println("GML: inflate.go: (e *WriteError) Error() string {")
 // 	return "flate: write error at offset " + strconv.FormatInt(e.Offset, 10) + ": " + e.Err.Error()
 // }
 
@@ -168,6 +168,7 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   // guaranteed to fail later since the compressed data section must be
   // composed of at least one symbol (the end-of-block marker).
   if max == 0 {
+    println("GML: inflate.go: max==0: return true")
     return true
   }
 
@@ -186,6 +187,7 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   // accept degenerate single-code codings. See also
   // TestDegenerateHuffmanCoding.
   if code != (1 << max) && not(code == 1 && max == 1) {
+    println("GML: inflate.go: INCOMPLETE CODE")
     return false
   }
 
@@ -234,8 +236,11 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
       n.reinterpret_as_uint()
     let mut reverse = reverse16(code.reinterpret_as_uint() & 0xffff).reinterpret_as_int()
     reverse = reverse >> (16 - n)
+    println(
+      "GML: inflate.go: init: loop: code=\{code}, nextcode[\{n}]=\{nextcode[n]}, chunk=\{chunk}, reverse=\{reverse}",
+    )
     if n <= huffman_chunk_bits {
-      for off = reverse; off < self.chunks.length(); off = (off + 1) << n {
+      for off = reverse; off < self.chunks.length(); off = off + (1 << n) {
         // We should never need to overwrite
         // an existing chunk. Also, 0 is
         // never a valid chunk, because the
@@ -260,7 +265,7 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
       reverse = reverse >> huffman_chunk_bits
       for off = reverse
           off < linktab.length()
-          off = (off + 1) << (n - huffman_chunk_bits) {
+          off = off + (1 << (n - huffman_chunk_bits)) {
         // if sanity && linktab[off] != 0 {
         //   abort("impossible: overwriting existing chunk")
         // }
@@ -397,6 +402,7 @@ fn next_block(self : Decompressor) -> Unit {
       // compressed, fixed Huffman tables
       self.hl = Some(fixed_huffman_decoder)
       self.hd = None
+      println("GML: nextBlock: f.hl = &fixedHuffmanDecoder, f.hd = nil")
       self.huffman_block()
     }
     2 => {
@@ -406,6 +412,7 @@ fn next_block(self : Decompressor) -> Unit {
         None => {
           self.hl = Some(self.h1)
           self.hd = Some(self.h2)
+          println("GML: nextBlock: f.hl = &f.h1, f.hd = &f.h2")
           self.huffman_block()
         }
         _ => ()
@@ -418,6 +425,7 @@ fn next_block(self : Decompressor) -> Unit {
 }
 
 fn read(self : Decompressor, b : Bytes) -> Int!Error {
+  println("GML: inflate.go: (f *decompressor) Read(b []byte) (int, error) {")
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -435,6 +443,12 @@ fn read(self : Decompressor, b : Bytes) -> Int!Error {
       _ => ()
     }
     (self.step._)(self)
+    let to_read = dump_slice(self.to_read)
+      .to_string()
+      .replace_all(old=",", new="")
+    println(
+      "GML: inflate.go: Read: f.err=\{self.err}, f.toRead=\{to_read}, len=\{self.to_read.length()}",
+    )
     match self.err {
       Some(IOEOF) =>
         if self.to_read.length() == 0 {
@@ -445,7 +459,17 @@ fn read(self : Decompressor, b : Bytes) -> Int!Error {
   }
 }
 
+pub fn dump_slice(buf : Slice[Byte]) -> Array[Int] {
+  println("dump_slice: buf.length=\{buf.length()}")
+  let arr = Array::new(capacity=buf.length())
+  for i in 0..<buf.length() {
+    arr.push(buf[i].to_int())
+  }
+  arr
+}
+
 fn close(self : Decompressor) -> Unit!Error {
+  println("GML: inflate.go: (f *decompressor) Close() error {")
   match self.err {
     Some(IOEOF) => return
     Some(err) => raise err
@@ -507,6 +531,9 @@ fn read_huffman(self : Decompressor) -> Error? {
   for i = nclen; i < code_order.length(); i = i + 1 {
     self.codebits[code_order[i]] = 0
   }
+  println(
+    "GML: inflate.go: readHuffman: calling f.h1.init(): len(f.codebits)=\{self.codebits.length()}",
+  )
   if not(self.h1.initialize(Slice::new(self.codebits))) {
     println("read_huffman: abnormal error 5")
     return Some(CorruptInputError(self.roffset))
@@ -530,6 +557,7 @@ fn read_huffman(self : Decompressor) -> Error? {
       // Actual length.
       self.bits[i] = x
       i += 1
+      println("GML: inflate.go: readHuffman: x(\{x}) < 16, i=\{i}")
       continue
     }
     // Repeat previous length or zero.
@@ -545,16 +573,25 @@ fn read_huffman(self : Decompressor) -> Error? {
           return Some(CorruptInputError(self.roffset))
         }
         b = self.bits[i - 1]
+        println(
+          "GML: inflate.go: readHuffman: case 16: rep=\{rep}, nb=\{nb}, b=\{b}",
+        )
       }
       17 => {
         rep = 3
         nb = 3
         b = 0
+        println(
+          "GML: inflate.go: readHuffman: case 17: rep=\{rep}, nb=\{nb}, b=\{b}",
+        )
       }
       18 => {
         rep = 11
         nb = 7
         b = 0
+        println(
+          "GML: inflate.go: readHuffman: case 18: rep=\{rep}, nb=\{nb}, b=\{b}",
+        )
       }
       _ => {
         println("read_huffman: abnormal error 8")
@@ -562,6 +599,9 @@ fn read_huffman(self : Decompressor) -> Error? {
       }
     }
     while self.nb < nb {
+      println(
+        "GML: inflate.go: readHuffman: f.nb=\{self.nb} < nb=\{nb} - calling moreBits",
+      )
       match self.more_bits() {
         Some(err) => {
           println("read_huffman: abnormal error 9")
@@ -570,9 +610,18 @@ fn read_huffman(self : Decompressor) -> Error? {
         _ => ()
       }
     }
-    rep += (self.b & (1 << (nb - 1).reinterpret_as_int()).reinterpret_as_uint()).reinterpret_as_int()
+    let delta_rep = (self.b &
+    ((1 << nb.reinterpret_as_int()) - 1).reinterpret_as_uint()).reinterpret_as_int()
+    println(
+      "GML: inflate.go: readHuffman: rep=\{rep}, f.b=\{self.b}, nb=\{nb}, int(f.b & uint32(1<<nb-1))=\{delta_rep}",
+    )
+    rep += delta_rep
+    println("GML: inflate.go: readHuffman: rep=\{rep}")
     self.b = self.b >> nb.reinterpret_as_int()
     self.nb -= nb
+    println(
+      "GML: inflate.go: readHuffman: rep=\{rep}, f.nb=\{self.nb}, f.b=\{self.b}",
+    )
     if i + rep > n {
       println("read_huffman: abnormal error 10")
       return Some(CorruptInputError(self.roffset))
@@ -584,6 +633,12 @@ fn read_huffman(self : Decompressor) -> Error? {
   }
 
   //
+  println(
+    "GML: inflate.go: readHuffman: calling f.h1.init(): len(f.bits)=\{nlit} THEN",
+  )
+  println(
+    "GML: inflate.go: readHuffman: calling f.h2.init(): len(f.bits)=\{ndist}",
+  )
   if not(self.h1.initialize(Slice::new(self.bits)[0:nlit])) ||
     not(self.h2.initialize(Slice::new(self.bits)[nlit:nlit + ndist])) {
     println("read_huffman: abnormal error 11")
@@ -597,6 +652,8 @@ fn read_huffman(self : Decompressor) -> Error? {
   if self.h1.min < self.bits[end_block_marker] {
     self.h1.min = self.bits[end_block_marker]
   }
+
+  //
   None
 }
 
@@ -632,36 +689,63 @@ fn read_literal(self : Decompressor) -> Unit {
       self.to_read = self.dict.read_flush()
       self.step = huffman_block
       self.step_state = StateInit
+      println(
+        "GML: inflate.go: readLiteral: case v(\{v}) < 256 - return (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+      )
       return
     }
     return self.read_literal()
   }
   if v == 256 {
     self.finish_block()
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) == 256 - return (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
     return
   }
   // otherwise, reference to older data
   if v < 265 {
     length = v - (257 - 3)
     n = 0
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < 265 - length=\{length}, n=0, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if v < 269 {
     length = v * 2 - (265 * 2 - 11)
     n = 1
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < 269 - length=\{length}, n=1, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if v < 273 {
     length = v * 4 - (269 * 4 - 19)
     n = 2
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < 273 - length=\{length}, n=2, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if v < 277 {
     length = v * 8 - (273 * 8 - 35)
     n = 3
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < 277 - length=\{length}, n=3, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if v < 281 {
     length = v * 16 - (277 * 16 - 67)
     n = 4
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < 281 - length=\{length}, n=4, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if v < 285 {
     length = v * 32 - (281 * 32 - 131)
     n = 5
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < 285 - length=\{length}, n=5, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if v < max_num_lit {
     length = 258
     n = 0
+    println(
+      "GML: inflate.go: readLiteral: case v(\{v}) < maxNumLit - length=258, n=0, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else {
     self.err = Some(CorruptInputError(self.roffset))
     return
@@ -677,6 +761,9 @@ fn read_literal(self : Decompressor) -> Unit {
     length += (self.b & (1U << (n - 1).reinterpret_as_int())).reinterpret_as_int()
     self.b = self.b >> n.reinterpret_as_int()
     self.nb -= n
+    println(
+      "GML: inflate.go: readLiteral: if n(\{n}) > 0, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   }
 
   //
@@ -692,6 +779,9 @@ fn read_literal(self : Decompressor) -> Unit {
       dist = reverse8(to_rev).to_int()
       self.b = self.b >> 5
       self.nb -= 5
+      println(
+        "GML: inflate.go: readLiteral: if f.hd == nil, (f.b=\{self.b}, f.nb=\{self.nb}, f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+      )
     }
     Some(hd) => {
       println("GML: inflate.go: readHuffman: else - calling huffSym")
@@ -703,26 +793,46 @@ fn read_literal(self : Decompressor) -> Unit {
           return
         }
       }
+      println(
+        "GML: inflate.go: readLiteral: if f.hd != nil, (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+      )
     }
   }
 
   //
   if dist < 4 {
     dist += 1
+    println(
+      "GML: inflate.go: readLiteral: case dist(\{dist}) < 4 - (f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else if dist < max_num_dist {
     let nb = (dist - 2).reinterpret_as_uint() >> 1
+    println(
+      "GML: inflate.go: readLiteral: case dist(\{dist}) < maxNumDist(\{max_num_dist}): nb=\{nb}",
+    )
     // have 1 bit in bottom of dist, need nb more.
     let mut extra = (dist & 1) << nb.reinterpret_as_int()
+    println(
+      "GML: inflate.go: readLiteral: case dist(\{dist}) < maxNumDist(\{max_num_dist}): nb=\{nb}, extra=\{extra}",
+    )
     while self.nb < nb {
       self.err = self.more_bits()
       guard let None = self.err else { _ => return  }
 
     }
-    extra = extra |
-      (self.b & (1U << (nb - 1).reinterpret_as_int())).reinterpret_as_int()
+    let mask = (1U << nb.reinterpret_as_int()) - 1
+    extra = extra | (self.b & mask).reinterpret_as_int()
+    println(
+      "GML: inflate.go: readLiteral: f.b=\{self.b}, nb=\{nb}, extra=\{extra}, uint32(1<<nb-1)=\{mask}",
+    )
     self.b = self.b >> nb.reinterpret_as_int()
+    println("GML: inflate.go: readLiteral: f.b=\{self.b}")
     self.nb -= nb
-    dist = 1 << (nb + 1 + 1 + extra.reinterpret_as_uint()).reinterpret_as_int()
+    println("GML: inflate.go: readLiteral: f.nb=\{self.nb}")
+    dist = (1 << (nb + 1).reinterpret_as_int()) + 1 + extra
+    println(
+      "GML: inflate.go: readLiteral: case dist(\{dist}) < maxNumDist(\{max_num_dist}) - (f.b=\{self.b}, f.nb=\{self.nb}, f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
   } else {
     self.err = Some(CorruptInputError(self.roffset))
     return
@@ -735,23 +845,35 @@ fn read_literal(self : Decompressor) -> Unit {
   }
   self.copy_len = length
   self.copy_dist = dist
+  println(
+    "GML: inflate.go: readLiteral: goto copyHistory - (f.b=\{self.b}, f.nb=\{self.nb}, f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+  )
   self.copy_history()
 }
 
 /// copy_history:
 /// Perform a backwards copy according to RFC section 3.2.3.
 fn copy_history(self : Decompressor) -> Unit {
+  println(
+    "GML: inflate.go: copyHistory: (f.b=\{self.b}, f.nb=\{self.nb}, f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+  )
   let mut cnt = self.dict.try_write_copy(self.copy_dist, self.copy_len)
   if cnt == 0 {
     cnt = self.dict.write_copy(self.copy_dist, self.copy_len)
   }
   self.copy_len -= cnt
+  println(
+    "GML: inflate.go: copyHistory: cnt=\{cnt}, (f.b=\{self.b}, f.nb=\{self.nb}, f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+  )
 
   //
   if self.dict.avail_write() == 0 || self.copy_len > 0 {
     self.to_read = self.dict.read_flush()
     self.step = huffman_block // We need to continue this work
     self.step_state = StateDict
+    println(
+      "GML: inflate.go: copyHistory: return (f.b=\{self.b}, f.nb=\{self.nb}, f.copyLen=\{self.copy_len}, f.copyDist=\{self.copy_dist})",
+    )
     return
   }
   self.read_literal()
@@ -759,6 +881,7 @@ fn copy_history(self : Decompressor) -> Unit {
 
 /// Copy a single uncompressed data block from input to output.
 fn data_block(self : Decompressor) -> Unit {
+  println("GML: inflate.go: (f *decompressor) dataBlock() {")
   // Uncompressed.
   // Discard current half-byte.
   self.nb = 0
@@ -792,6 +915,7 @@ fn data_block(self : Decompressor) -> Unit {
 /// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
 /// It pauses for reads when f.hist is full.
 fn copy_data(self : Decompressor) -> Unit {
+  println("GML: inflate.go: (f *decompressor) copyData() {")
   let mut buf = self.dict.write_slice()
   if buf.length() > self.copy_len {
     buf = buf[:self.copy_len]
@@ -818,6 +942,7 @@ fn copy_data(self : Decompressor) -> Unit {
 }
 
 fn finish_block(self : Decompressor) -> Unit {
+  println("GML: inflate.go: (f *decompressor) finishBlock() {")
   if self.final {
     if self.dict.avail_read() > 0 {
       self.to_read = self.dict.read_flush()
@@ -829,6 +954,7 @@ fn finish_block(self : Decompressor) -> Unit {
 
 /// no_eof returns err, unless err == IOEOF, in which case it returns IOErrUnexpectedEOF.
 fn no_eof(e : Error) -> Error {
+  println("GML: inflate.go: noEOF(e error) error {")
   match e {
     IOEOF => return IOErrUnexpectedEOF
     _ => e
@@ -875,7 +1001,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
           self.b = b
           self.nb = nb
           println(
-            "GML: inflate.go: (f *decompressor) huffSym(h *huffmanDecoder) = 0, noEOF(err)",
+            "GML: inflate.go: (f *decompressor) huffSym(h *huffmanDecoder) = 0, noEOF(err) (A: f.b=\{self.b}, f.nb=\{self.nb})",
           )
           raise no_eof(err)
         }
@@ -903,7 +1029,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
         let err = CorruptInputError(self.roffset)
         self.err = Some(err)
         println(
-          "GML: inflate.go: (f *decompressor) huffSym(h *huffmanDecoder) = 0, f.err",
+          "GML: inflate.go: (f *decompressor) huffSym(h *huffmanDecoder) = 0, f.err (B: n=\{n}, f.b=\{self.b}, f.nb=\{self.nb}, chunk=\{chunk})",
         )
         raise err
       }
@@ -911,7 +1037,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
       self.nb = nb - n
       let v = (chunk >> huffman_value_shift).reinterpret_as_int()
       println(
-        "GML: inflate.go: (f *decompressor) huffSym(h *huffmanDecoder) = \{v}, nil",
+        "GML: inflate.go: (f *decompressor) huffSym(h *huffmanDecoder) = \{v}, nil (C: n=\{n}, f.b=\{self.b}, f.nb=\{self.nb}, chunk=\{chunk})",
       )
       return v
     }
@@ -919,10 +1045,14 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
 }
 
 fn make_reader(self : Decompressor, r : IOReader) -> Unit {
+  println("GML: inflate.go: (f *decompressor) makeReader(r io.Reader) {")
   self.r = r
 }
 
 fn reset(self : Decompressor, r : IOReader, dict : Slice[Byte]) -> Unit {
+  println(
+    "GML: inflate.go: (f *decompressor) Reset(r io.Reader, dict []byte) error {",
+  )
   self.r = r
   self.roffset = 0
   self.b = 0
