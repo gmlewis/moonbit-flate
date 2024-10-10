@@ -74,6 +74,7 @@ fn bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
       total += f * self.codes[i].len.reinterpret_as_int()
     }
   }
+  println("GML: huffman_code.go: (h *huffmanEncoder) bitLength(freq (len=\{freq.length()})) = \{total}")
   total
 }
 
@@ -323,6 +324,11 @@ fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
     // The largest of these is max_num_lit, so we allocate for that case.
     println("GML: generate: new self.freqcache")
     self.freqcache = Array::make(max_num_lit + 1, { literal: 0, freq: 0 })
+    // Is this a MoonBit bug? Need to make unique structs or else they will
+    // all refer to the same one.
+    for i = 0; i <= max_num_lit; i = i + 1 {
+      self.freqcache[i] = { literal: 0, freq: 0 }
+    }
   }
   let mut list = Slice::new(self.freqcache)[:freq.length() + 1]
   // Number of non-zero literals

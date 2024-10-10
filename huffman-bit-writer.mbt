@@ -232,7 +232,7 @@ fn generate_codegen(
   off_enc : HuffmanEncoder
 ) -> Unit {
   println(
-    "GML: generate_codegen(num_literals=\{num_literals}, num_offsets=\{num_offsets}): A",
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) generateCodegen(numLiterals=\{num_literals}, numOffsets=\{num_offsets}, litEnc, offEnc *huffmanEncoder) {",
   )
   for i in self.codegen_freq {
     self.codegen_freq[i] = 0
@@ -447,16 +447,26 @@ fn write_dynamic_header(
   if is_eof {
     first_bits = 5
   }
+  println("GML: writeDynamicHeader: A")
   self.write_bits(first_bits, 3)
+  println("GML: writeDynamicHeader: B")
   self.write_bits(num_literals - 257, 5)
+  println("GML: writeDynamicHeader: C")
   self.write_bits(num_offsets - 1, 5)
+  println("GML: writeDynamicHeader: D")
   self.write_bits(num_codegens - 4, 4)
+
+  //
   for i in 0..<num_codegens {
+    println("GML: writeDynamicHeader: E: i=\{i}")
     let value = self.codegen_encoding.codes[codegen_order[i]].len.reinterpret_as_int()
     self.write_bits(value, 3)
   }
+
+  //
   let mut i = 0
   for {
+    println("GML: writeDynamicHeader: F: i=\{i}")
     let code_word = self.codegen[i]
     i += 1
     if code_word == bad_code {
@@ -465,14 +475,17 @@ fn write_dynamic_header(
     self.write_code(self.codegen_encoding.codes[code_word.to_int()])
     match code_word.to_int() {
       16 => {
+        println("GML: writeDynamicHeader: G")
         self.write_bits(self.codegen[i].to_int(), 2)
         i += 1
       }
       17 => {
+        println("GML: writeDynamicHeader: H")
         self.write_bits(self.codegen[i].to_int(), 3)
         i += 1
       }
       18 => {
+        println("GML: writeDynamicHeader: I")
         self.write_bits(self.codegen[i].to_int(), 7)
         i += 1
       }
@@ -600,21 +613,29 @@ fn write_block_dynamic(
   eof : Bool,
   input : Bytes
 ) -> Unit {
+  println(
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBlockDynamic(tokens []token, eof bool, input []byte) {",
+  )
   if not(self.err.is_empty()) {
     return
   }
+
+  //
   tokens.push(end_block_marker.reinterpret_as_uint())
   let (num_literals, num_offsets) = self.index_tokens(tokens)
 
   // Generate codegen and codegen_frequencies, which indicates how to encode
   // the literal_encoding and the offset_encoding.
+  println("GML: writeBlockDynamic: generateCodegen")
   self.generate_codegen(
     num_literals,
     num_offsets,
     self.literal_encoding,
     self.offset_encoding,
   )
+  println("GML: writeBlockDynamic: generate")
   self.codegen_encoding.generate(Slice::new(self.codegen_freq), 7)
+  println("GML: writeBlockDynamic: dynamicSize")
   let (size, numCodegens) = self.dynamic_size(
     self.literal_encoding,
     self.offset_encoding,
@@ -622,17 +643,22 @@ fn write_block_dynamic(
   )
 
   // Store bytes, if we don't get a reasonable improvement.
+  println("GML: writeBlockDynamic: storedSize")
   let (ssize, storable) = stored_size(input.length())
   if storable && ssize < ((size + size) >> 4) {
+    println("GML: writeBlockDynamic: writeStoredHeader")
     self.write_stored_header(input.length(), eof)
+    println("GML: writeBlockDynamic: writeBytes")
     self.write_bytes(input)
     return
   }
 
   // Write Huffman table.
+  println("GML: writeBlockDynamic: writeDynamicHeader")
   self.write_dynamic_header(num_literals, num_offsets, numCodegens, eof)
 
   // Write the tokens.
+  println("GML: writeBlockDynamic: writeTokens")
   self.write_tokens(
     tokens,
     self.literal_encoding.codes,
@@ -645,27 +671,41 @@ fn write_block_dynamic(
 // and offset_encoding.
 // The number of literal and offset tokens is returned.
 fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
-  for i in self.literal_freq {
+  println(
+    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) indexTokens(tokens []token) (numLiterals, numOffsets int) {",
+  )
+  for i in 0..<self.literal_freq.length() {
     self.literal_freq[i] = 0
   }
-  for i in self.offset_freq {
+  for i in 0..<self.offset_freq.length() {
     self.offset_freq[i] = 0
   }
-  for t in tokens {
+
+  //
+  for i, t in tokens {
+    println("GML: indexTokens: tokens[\{i}]=\{t._}")
     if t._ < match_type {
       self.literal_freq[t.literal().reinterpret_as_int()] += 1
       continue
     }
-    let length = t.length().reinterpret_as_int()
-    let offset = t.offset().reinterpret_as_int()
+    let length = t.length() // .reinterpret_as_int()
+    let offset = t.offset() // .reinterpret_as_int()
     self.literal_freq[length_codes_start + length_code(length)] += 1
-    self.offset_freq[offset_code(offset)] += 1
+    let code = offset_code(offset)
+    self.offset_freq[code] += 1
+    println(
+      "GML: indexTokens: self.offset_freq[\{code}] = \{self.offset_freq[code]}",
+    )
   }
 
   // get the number of literals
   let mut num_literals = self.literal_freq.length()
   while self.literal_freq[num_literals - 1] == 0 {
     num_literals -= 1
+  }
+  println("GML: indexTokens: numLiterals=\{num_literals}")
+  for i = 0; i < self.offset_freq.length(); i = i + 1 {
+    println("GML: indexTokens: offsetFreq[\{i}]=\{self.offset_freq[i]}")
   }
   // get the number of offsets
   let mut num_offsets = self.offset_freq.length()
@@ -678,7 +718,10 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
     self.offset_freq[0] = 1
     num_offsets = 1
   }
+  println("GML: indexTokens: numOffsets=\{num_offsets}")
+  println("GML: indexTokens: literalEncoding.generate")
   self.literal_encoding.generate(Slice::new(self.literal_freq), 15)
+  println("GML: indexTokens: offsetEncoding.generate")
   self.offset_encoding.generate(Slice::new(self.offset_freq), 15)
   (num_literals, num_offsets)
 }
@@ -700,21 +743,21 @@ fn write_tokens(
       continue
     }
     // Write the length
-    let length = t.length().reinterpret_as_int()
+    let length = t.length()
     let length_code = length_code(length)
     self.write_code(le_codes[length_code + length_codes_start])
     let extra_length_bits = length_extra_bits[length_code].reinterpret_as_uint()
     if extra_length_bits > 0 {
-      let extra_length = length - length_base[length_code].reinterpret_as_int()
+      let extra_length = (length - length_base[length_code]).reinterpret_as_int()
       self.write_bits(extra_length, extra_length_bits)
     }
     // Write the offset
-    let offset = t.offset().reinterpret_as_int()
+    let offset = t.offset()
     let offset_code = offset_code(offset)
     self.write_code(oe_codes[offset_code])
     let extra_offset_bits = offset_extra_bits[offset_code].reinterpret_as_uint()
     if extra_offset_bits > 0 {
-      let extra_offset = offset - offset_base[offset_code].reinterpret_as_int()
+      let extra_offset = (offset - offset_base[offset_code]).reinterpret_as_int()
       self.write_bits(extra_offset, extra_offset_bits)
     }
   }
