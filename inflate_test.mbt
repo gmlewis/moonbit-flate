@@ -1,9 +1,9 @@
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/inflate_test.go
-/// which has the copyright notice:
-/// Copyright 2014 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/inflate_test.go
+// which has the copyright notice:
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 // func TestReset(t *testing.T) {
 // 	ss := []string{

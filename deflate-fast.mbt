@@ -1,11 +1,11 @@
 // -*- compile-command: "moon test --target js > got.txt"; -*-
 
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflatefast.go
-/// which has the copyright notice:
-/// Copyright 2016 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflatefast.go
+// which has the copyright notice:
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 // This encoding algorithm, which prioritizes speed over output size, is
 // based on Snappy's LZ77-style encoder: github.com/golang/snappy

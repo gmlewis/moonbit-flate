@@ -1,11 +1,11 @@
 // -*- compile-command: "moon test --target js > got.txt"; -*-
 
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/huffman_code.go
-/// which has the copyright notice:
-/// Copyright 2009 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/huffman_code.go
+// which has the copyright notice:
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 struct HuffmanEncoder {
   codes : Array[HCode]

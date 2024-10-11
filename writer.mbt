@@ -3,6 +3,8 @@ struct Writer {
   // dict : Bytes
 }
 
+/// `Writer::new` returns a new [Writer] compressing data at the "BestSpeed" level.
+/// It writes its (compressed) data to the provided `buf`.
 pub fn Writer::new(buf : Buffer) -> Writer {
   let d = Compressor::new(buf)
   // let dict = Bytes::new(0)
@@ -10,10 +12,14 @@ pub fn Writer::new(buf : Buffer) -> Writer {
   { d, }
 }
 
+/// `write` writes the provided data to the flate Writer.
 pub fn write(self : Writer, data : Bytes) -> Int!Error {
   self.d.write!(data)
 }
 
+/// `close` closes the input to the flate Writer.
+/// After closing the Writer, the compressed data can be read
+/// from the `Buffer` provided to `new`.
 pub fn close(self : Writer) -> Unit!Error {
   self.d.close!()
 }

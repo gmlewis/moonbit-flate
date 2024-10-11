@@ -1,13 +1,13 @@
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/inflate.go
-/// which has the copyright notice:
-/// Copyright 2009 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
-///
-/// Package flate implements the DEFLATE compressed data format, described in
-/// RFC 1951.  The gzip and zlib packages implement access to DEFLATE-based file
-/// formats.
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/inflate.go
+// which has the copyright notice:
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Package flate implements the DEFLATE compressed data format, described in
+// RFC 1951.  The gzip and zlib packages implement access to DEFLATE-based file
+// formats.
 
 let max_code_len = 16 // max length of Huffman code
 // The next three numbers come from the RFC section 3.2.7, with the

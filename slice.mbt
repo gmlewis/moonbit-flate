@@ -1,3 +1,7 @@
+// This file is based on MoonBit's "ArrayView" implementation here:
+// https://github.com/moonbitlang/core/blob/main/builtin/arrayview.mbt
+// which has the following copyright:
+
 // Copyright 2024 International Digital Economy Academy
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +15,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// A separate Slice type was needed because of this issue:
+// https://github.com/moonbitlang/core/issues/1063
 
 /// A `Slice` is a slice of an `Array`.
 struct Slice[T] {

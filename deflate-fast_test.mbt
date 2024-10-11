@@ -1,11 +1,11 @@
 // -*- compile-command: "moon test --target js > got.txt"; -*-
 
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflate_test.go
-/// which has the copyright notice:
-/// Copyright 2009 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflate_test.go
+// which has the copyright notice:
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 // TestBestSpeed tests that round-tripping through deflate and then inflate
 // recovers the original input. The Write sizes are near the thresholds in the

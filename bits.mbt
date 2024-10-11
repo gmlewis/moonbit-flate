@@ -1,16 +1,16 @@
-/// This file is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/math/bits/bits.go
-/// which has the copyright notice:
-/// Copyright 2017 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/math/bits/bits.go
+// which has the copyright notice:
+// Copyright 2017 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
-/// reverse8 returns the value of x with its bits in reversed order.
+// reverse8 returns the value of x with its bits in reversed order.
 fn reverse8(x : Byte) -> Byte {
   return rev8tab[x.to_int()].to_byte()
 }
 
-/// reverse16 returns the value of x with its bits in reversed order.
+// reverse16 returns the value of x with its bits in reversed order.
 fn reverse16(x : UInt) -> UInt {
   return rev8tab[((x & 0xff00) >> 8).reinterpret_as_int()] |
     (rev8tab[(x & 0xff).reinterpret_as_int()] << 8)
