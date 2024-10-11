@@ -444,8 +444,6 @@ fn read(self : Decompressor, b : Bytes) -> Int!Error {
     }
     (self.step._)(self)
     let to_read = dump_slice(self.to_read)
-      .to_string()
-      .replace_all(old=",", new="")
     gmldbg(
       "GML: inflate.go: Read: f.err=\{self.err}, f.toRead=\{to_read}, len=\{self.to_read.length()}",
     )
@@ -459,12 +457,12 @@ fn read(self : Decompressor, b : Bytes) -> Int!Error {
   }
 }
 
-pub fn dump_slice(buf : Slice[Byte]) -> Array[Int] {
+pub fn dump_slice(buf : Slice[Byte]) -> String {
   let arr = Array::new(capacity=buf.length())
   for i in 0..<buf.length() {
     arr.push(buf[i].to_int())
   }
-  arr
+  arr.to_string().replace_all(old=",", new="")
 }
 
 fn close(self : Decompressor) -> Unit!Error {

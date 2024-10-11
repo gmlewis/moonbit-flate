@@ -66,14 +66,14 @@ let max_store_block_size = 65535
 
 let bufferReset : Int = @int.max_value - max_store_block_size * 2
 
-fn load32(b : Bytes, i : Int) -> UInt {
+fn load32(b : Slice[Byte], i : Int) -> UInt {
   return b[i + 0].to_uint() |
     (b[i + 1].to_uint() << 8) |
     (b[i + 2].to_uint() << 16) |
     (b[i + 3].to_uint() << 24)
 }
 
-fn load64(b : Bytes, i : Int) -> UInt64 {
+fn load64(b : Slice[Byte], i : Int) -> UInt64 {
   return b[i + 0].to_uint().to_uint64() |
     (b[i + 1].to_uint().to_uint64() << 8) |
     (b[i + 2].to_uint().to_uint64() << 16) |
@@ -108,21 +108,25 @@ struct TableEntry {
 // and the previous byte block for cross block matching.
 struct DeflateFast {
   table : FixedArray[TableEntry] // [table_size]TableEntry
-  mut prev : Bytes // Previous block, zero length if unknown.
+  mut prev : Slice[Byte] // Previous block, zero length if unknown.
   mut cur : Int // Current match offset.
 } derive(Show, Eq)
 
 fn DeflateFast::new() -> DeflateFast {
   {
     table: FixedArray::make(table_size, { val: 0U, offset: 0 }),
-    prev: Bytes::new(0),
+    prev: Slice::new([]),
     cur: max_store_block_size,
   }
 }
 
 // encode encodes a block given in src and appends tokens
 // to dst and returns the result.
-fn encode(self : DeflateFast, dst : Array[Token], src : Bytes) -> Array[Token] {
+fn encode(
+  self : DeflateFast,
+  dst : Array[Token],
+  src : Slice[Byte]
+) -> Array[Token] {
   gmldbg(
     "GML: deflatefast.go: (e *deflateFast) encode(dst []token, src []byte) []token {",
   )
@@ -136,7 +140,7 @@ fn encode(self : DeflateFast, dst : Array[Token], src : Bytes) -> Array[Token] {
   // instead of the callee handles this case.
   if src.length() < min_non_literal_block_size {
     self.cur += max_store_block_size
-    self.prev = Bytes::new(0)
+    self.prev = Slice::new([])
     return emit_literal(dst, src)
   }
 
@@ -152,12 +156,13 @@ fn encode(self : DeflateFast, dst : Array[Token], src : Bytes) -> Array[Token] {
   let mut next_hash = hash(cv)
   let emit_remainder = fn() {
     if next_emit < src.length() {
-      dst = emit_literal(dst, src, start=next_emit)
+      dst = emit_literal(dst, src[next_emit:])
     }
     self.cur += src.length()
-    self.prev = src.copy()
+    let _ = slice_copy(self.prev, src)
     return dst
   }
+
   //
   for {
     // Copied from the C++ snappy implementation:
@@ -204,7 +209,7 @@ fn encode(self : DeflateFast, dst : Array[Token], src : Bytes) -> Array[Token] {
     // A 4-byte match has been found. We'll later see if more than 4 bytes
     // match. But, prior to the match, src[next_emit:s] are unmatched. Emit
     // them as literal bytes.
-    dst = emit_literal(dst, src, start=next_emit, end=s)
+    dst = emit_literal(dst, src[next_emit:s])
 
     // Call emitCopy, and then see if another emitCopy could be our next
     // move. Repeat until we find no match for the input immediately after
@@ -269,14 +274,9 @@ fn encode(self : DeflateFast, dst : Array[Token], src : Bytes) -> Array[Token] {
   emit_remainder()
 }
 
-fn emit_literal(
-  dst : Array[Token],
-  lit : Bytes,
-  ~start : Int = 0,
-  ~end : Int = lit.length()
-) -> Array[Token] {
+fn emit_literal(dst : Array[Token], lit : Slice[Byte]) -> Array[Token] {
   gmldbg("GML: deflatefast.go: emitLiteral(dst []token, lit []byte) []token {")
-  for i = start; i < end; i = i + 1 {
+  for i in 0..<lit.length() {
     let v = lit[i]
     dst.push(literal_token(v.to_uint()))
   }
@@ -286,7 +286,7 @@ fn emit_literal(
 // match_len returns the match length between src[s:] and src[t:].
 // t can be negative to indicate the match is starting in self.prev.
 // We assume that src[s-4:s] and src[t-4:t] already match.
-fn match_len(self : DeflateFast, s : Int, t : Int, src : Bytes) -> Int {
+fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
   gmldbg(
     "GML: deflatefast.go: (e *deflateFast) matchLen(s, t int32, src []byte) int32 {",
   )
@@ -358,7 +358,7 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Bytes) -> Int {
 // This ensures that no matches are made to the previous block.
 fn reset(self : DeflateFast) -> Unit {
   gmldbg("GML: deflatefast.go: (e *deflateFast) reset() {")
-  self.prev = Bytes::new(0)
+  self.prev = Slice::new([])
   // Bump the offset, so all matches will fail distance check.
   // Nothing should be >= self.cur in the table.
   self.cur += max_match_offset

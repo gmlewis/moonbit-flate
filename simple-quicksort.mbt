@@ -42,3 +42,11 @@ fn quicksort_helper[T](
 fn quicksort[T](a : Slice[T], less : (T, T) -> Bool) -> Unit {
   quicksort_helper(a, 0, a.length() - 1, less)
 }
+
+fn minimum(x : Int, y : Int) -> Int {
+  if x > y {
+    y
+  } else {
+    x
+  }
+}

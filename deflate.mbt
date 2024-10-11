@@ -29,8 +29,8 @@ struct Compressor {
   // hashOffset int
 
   // input window: unprocessed data is window[index:window_end]
-  // index         int
-  window : Bytes
+  // mut index : Int
+  window : Slice[Byte]
   mut window_end : Int
   // blockStart    int  // window index where current tokens start
   // byteAvailable bool // if true, still need to process window[index-1].
@@ -51,12 +51,15 @@ struct Compressor {
 } derive(Show)
 
 fn Compressor::new(buf : Buffer) -> Compressor {
-  gmldbg("GML: deflate.go: d *compressor) init(w io.Writer, level int) (err error) {")
+  gmldbg(
+    "GML: deflate.go: d *compressor) init(w io.Writer, level int) (err error) {",
+  )
   // d.compressionLevel = levels[level]
   let w = HuffmanBitWriter::new(buf)
   {
     w,
-    window: Bytes::make(max_store_block_size, b'\x00'),
+    // index: 0,
+    window: Slice::new(Array::make(max_store_block_size, b'\x00')),
     window_end: 0,
     sync: false,
     // fill:  (*compressor).fillStore,
@@ -95,16 +98,10 @@ fn close(self : Compressor) -> Unit!Error {
   self.err = Some(WriterClosedError)
 }
 
-fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
+fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> Error? {
   gmldbg("GML: deflate.go: d *compressor) writeStoredBlock(buf []byte) error {")
-  self.w.write_stored_header(len, false)
+  self.w.write_stored_header(buf.length(), false)
   if not(self.w.err.is_empty()) {
-    return self.w.err
-  }
-  if len != buf.length() {
-    let b = Bytes::new(len)
-    b.blit(0, buf, 0, len)
-    self.w.write_bytes(b)
     return self.w.err
   }
   self.w.write_bytes(buf)
@@ -112,14 +109,18 @@ fn write_stored_block(self : Compressor, buf : Bytes, len : Int) -> Error? {
 }
 
 fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
-  gmldbg("GML: deflate.go: d *compressor) fillStore(b []byte) int { // BEFORE copy: d.windowEnd=\{self.window_end}, len(b)=\{b.length()}")
-  let n = minimum(self.window.length()-self.window_end, b.length())
+  gmldbg(
+    "GML: deflate.go: d *compressor) fillStore(b []byte) int { // BEFORE copy: d.windowEnd=\{self.window_end}, len(b)=\{b.length()}",
+  )
+  let n = minimum(self.window.length() - self.window_end, b.length())
   // let n = copy(self.window[self.window_end:], b)
   for i in 0..<n {
     self.window[self.window_end + i] = b[i]
   }
   self.window_end += n
-  gmldbg("GML: deflate.go: d *compressor) fillStore(b []byte) int { // AFTER copy: d.windowEnd=\{self.window_end}, n=\{n}")
+  gmldbg(
+    "GML: deflate.go: d *compressor) fillStore(b []byte) int { // AFTER copy: d.windowEnd=\{self.window_end}, n=\{n}",
+  )
   n
 }
 
@@ -127,7 +128,9 @@ fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 // if enough has been accumulated or we at the end of the stream.
 // Any error that occurred will be in self.err
 fn enc_speed(self : Compressor) -> Unit {
-  gmldbg("GML: deflate.go: d *compressor) encSpeed() { // d.windowEnd=\{self.window_end}, maxStoreBlockSize=\{max_store_block_size}")
+  gmldbg(
+    "GML: deflate.go: d *compressor) encSpeed() { // d.windowEnd=\{self.window_end}, maxStoreBlockSize=\{max_store_block_size}",
+  )
   // We only compress if we have max_store_block_size.
   if self.window_end < max_store_block_size {
     if not(self.sync) {
@@ -141,11 +144,15 @@ fn enc_speed(self : Compressor) -> Unit {
         return
       }
       if self.window_end <= 16 {
-        gmldbg("GML: deflate.go: encSpeed: case d.windowEnd(\{self.window_end}) <= 16")
-        self.err = self.write_stored_block(self.window, self.window_end)
+        gmldbg(
+          "GML: deflate.go: encSpeed: case d.windowEnd(\{self.window_end}) <= 16",
+        )
+        self.err = self.write_stored_block(self.window[:self.window_end])
       } else {
-        gmldbg("GML: deflate.go: encSpeed: default: d.windowEnd(\{self.window_end})")
-        self.w.write_block_huff(false, self.window, self.window_end)
+        gmldbg(
+          "GML: deflate.go: encSpeed: default: d.windowEnd(\{self.window_end})",
+        )
+        self.w.write_block_huff(false, self.window[:self.window_end])
         self.err = self.w.err
       }
       self.window_end = 0
@@ -155,17 +162,24 @@ fn enc_speed(self : Compressor) -> Unit {
   }
   // Encode the block.
   // self.tokens = self.best_speed.encode([], self.window[:self.window_end])
-  let b = Bytes::from_iter(self.window.iter().take(self.window_end))
-  self.tokens = self.best_speed.encode([], b)
+  self.tokens = self.best_speed.encode([], self.window[:self.window_end])
 
   // If we removed less than 1/16th, Huffman compress the block.
   if self.tokens.length() > self.window_end - (self.window_end >> 4) {
-    gmldbg("GML: deflate.go: encSpeed: len(d.tokens)(\{self.tokens.length()}) > (\{self.window_end-(self.window_end>>4)})d.windowEnd-(d.windowEnd>>4)")
-    self.w.write_block_huff(false, self.window, self.window_end)
+    gmldbg(
+      "GML: deflate.go: encSpeed: len(d.tokens)(\{self.tokens.length()}) > (\{self.window_end-(self.window_end>>4)})d.windowEnd-(d.windowEnd>>4)",
+    )
+    self.w.write_block_huff(false, self.window[:self.window_end])
   } else {
-    gmldbg("GML: deflate.go: encSpeed: len(d.tokens)(\{self.tokens.length()}) <= (\{self.window_end-(self.window_end>>4)})d.windowEnd-(d.windowEnd>>4)")
+    gmldbg(
+      "GML: deflate.go: encSpeed: len(d.tokens)(\{self.tokens.length()}) <= (\{self.window_end-(self.window_end>>4)})d.windowEnd-(d.windowEnd>>4)",
+    )
     // self.w.write_block_dynamic(self.tokens, false, self.window[:self.window_end])
-    self.w.write_block_dynamic(self.tokens, false, b)
+    self.w.write_block_dynamic(
+      self.tokens,
+      false,
+      self.window[:self.window_end],
+    )
   }
   self.err = self.w.err
   self.window_end = 0
@@ -179,11 +193,17 @@ pub fn write(self : Compressor, b : Bytes) -> Int!Error {
   let mut b : Slice[Byte] = Slice::new(Array::from_iter(b.iter()))
   let n = b.length()
   while b.length() > 0 {
-    gmldbg("GML: deflate.go: d *compressor) write: BEFORE calling d.step: len(b)=\{b.length()}")
+    gmldbg(
+      "GML: deflate.go: d *compressor) write: BEFORE calling d.step: len(b)=\{b.length()}",
+    )
     self.enc_speed()
-    gmldbg("GML: deflate.go: d *compressor) write: BEFORE calling d.fill: len(b)=\{b.length()}")
+    gmldbg(
+      "GML: deflate.go: d *compressor) write: BEFORE calling d.fill: len(b)=\{b.length()}",
+    )
     b = b[self.fill_store(b):]
-    gmldbg("GML: deflate.go: d *compressor) write: AFTER calling d.fill: len(b)=\{b.length()}")
+    gmldbg(
+      "GML: deflate.go: d *compressor) write: AFTER calling d.fill: len(b)=\{b.length()}",
+    )
     if not(self.err.is_empty()) {
       raise self.err.unwrap()
     }
