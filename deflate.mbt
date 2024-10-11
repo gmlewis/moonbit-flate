@@ -127,7 +127,7 @@ fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 // if enough has been accumulated or we at the end of the stream.
 // Any error that occurred will be in self.err
 fn enc_speed(self : Compressor) -> Unit {
-  gmldbg("GML: deflate.go: d *compressor) encSpeed() {")
+  gmldbg("GML: deflate.go: d *compressor) encSpeed() { // d.windowEnd=\{self.window_end}, maxStoreBlockSize=\{max_store_block_size}")
   // We only compress if we have max_store_block_size.
   if self.window_end < max_store_block_size {
     if not(self.sync) {
@@ -137,11 +137,14 @@ fn enc_speed(self : Compressor) -> Unit {
     // Handle small sizes.
     if self.window_end < 128 {
       if self.window_end == 0 {
+        gmldbg("GML: deflate.go: encSpeed: case d.windowEnd == 0")
         return
       }
       if self.window_end <= 16 {
+        gmldbg("GML: deflate.go: encSpeed: case d.windowEnd(\{self.window_end}) <= 16")
         self.err = self.write_stored_block(self.window, self.window_end)
       } else {
+        gmldbg("GML: deflate.go: encSpeed: default: d.windowEnd(\{self.window_end})")
         self.w.write_block_huff(false, self.window, self.window_end)
         self.err = self.w.err
       }
@@ -157,8 +160,10 @@ fn enc_speed(self : Compressor) -> Unit {
 
   // If we removed less than 1/16th, Huffman compress the block.
   if self.tokens.length() > self.window_end - (self.window_end >> 4) {
+    gmldbg("GML: deflate.go: encSpeed: len(d.tokens)(\{self.tokens.length()}) > (\{self.window_end-(self.window_end>>4)})d.windowEnd-(d.windowEnd>>4)")
     self.w.write_block_huff(false, self.window, self.window_end)
   } else {
+    gmldbg("GML: deflate.go: encSpeed: len(d.tokens)(\{self.tokens.length()}) <= (\{self.window_end-(self.window_end>>4)})d.windowEnd-(d.windowEnd>>4)")
     // self.w.write_block_dynamic(self.tokens, false, self.window[:self.window_end])
     self.w.write_block_dynamic(self.tokens, false, b)
   }

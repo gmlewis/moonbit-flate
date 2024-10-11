@@ -404,6 +404,7 @@ fn dynamic_size(
 
 // fixed_size returns the size of dynamically encoded data in bits.
 fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
+  gmldbg("GML: huffman_bit_writer.go: (w *huffmanBitWriter) fixedSize(extraBits=\{extra_bits}) int {")
   3 +
   fixed_literal_encoding.bit_length(Slice::new(self.literal_freq)) +
   fixed_offset_encoding.bit_length(Slice::new(self.offset_freq)) +
@@ -551,99 +552,6 @@ fn write_stored_header(
   self.write_bits(length.lnot() & 0xffff, 16)
 }
 
-// write_block_huff encodes a block of bytes as either
-// Huffman encoded literals or uncompressed bytes if the
-// results only gains very little from compression.
-fn write_block_huff(
-  self : HuffmanBitWriter,
-  eof : Bool,
-  input : Bytes,
-  len : Int
-) -> Unit {
-  if not(self.err.is_empty()) {
-    return
-  }
-
-  // Clear histogram
-  for i = 0; i < max_num_lit; i = i + 1 {
-    self.literal_freq[i] = 0
-  }
-
-  // Add everything as literals
-  histogram(input, len, self.literal_freq)
-  self.literal_freq[end_block_marker] = 1
-  let num_literals = end_block_marker + 1
-  self.offset_freq[0] = 1
-  let num_offsets = 1
-  self.literal_encoding.generate(Slice::new(self.literal_freq), 15)
-
-  // Figure out smallest code.
-  // Always use dynamic Huffman or Store
-  // let num_codegens = 0
-
-  // Generate codegen and codegen_frequencies, which indicates how to encode
-  // the literal_encoding and the offset_encoding.
-  self.generate_codegen(
-    num_literals,
-    num_offsets,
-    self.literal_encoding,
-    huff_offset,
-  )
-  self.codegen_encoding.generate(Slice::new(self.codegen_freq), 7)
-  let (size, num_codegens) = self.dynamic_size(
-    self.literal_encoding,
-    huff_offset,
-    0,
-  )
-
-  // Store bytes, if we don't get a reasonable improvement.
-  let (ssize, storable) = stored_size(input.length())
-  if storable && ssize < ((size + size) >> 4) {
-    self.write_stored_header(input.length(), eof)
-    self.write_bytes(input)
-    return
-  }
-
-  // Huffman.
-  self.write_dynamic_header(num_literals, num_offsets, num_codegens, eof)
-  let encoding = self.literal_encoding.codes[:257]
-  let mut n = self.nbytes
-  for t in input {
-    // Bitwriting inlined, ~30% speedup
-    let c = encoding[t.to_int()]
-    self.bits = self.bits |
-      (c.code.to_uint64() << self.nbits.reinterpret_as_int())
-    self.nbits += c.len
-    if self.nbits < 48 {
-      continue
-    }
-    // Store 6 bytes
-    let bits = self.bits
-    self.bits = self.bits >> 48
-    self.nbits -= 48
-    // bytes := self.bytes[n : n+6]
-    self.bytes[n + 0] = bits.to_byte()
-    self.bytes[n + 1] = (bits >> 8).to_byte()
-    self.bytes[n + 2] = (bits >> 16).to_byte()
-    self.bytes[n + 3] = (bits >> 24).to_byte()
-    self.bytes[n + 4] = (bits >> 32).to_byte()
-    self.bytes[n + 5] = (bits >> 40).to_byte()
-    n += 6
-    if n < buffer_flush_size {
-      continue
-    }
-    // self.write(self.bytes[:n])
-    let b = Bytes::from_iter(self.bytes.iter().take(n))
-    self.write(b)
-    if not(self.err.is_empty()) {
-      return  // Return early in the event of write failures
-    }
-    n = 0
-  }
-  self.nbytes = n
-  self.write_code(encoding[end_block_marker])
-}
-
 // write_block_dynamic encodes a block using a dynamic Huffman table.
 // This should be used if the symbols used have a disproportionate
 // histogram distribution.
@@ -685,7 +593,7 @@ fn write_block_dynamic(
   )
 
   // Store bytes, if we don't get a reasonable improvement.
-  gmldbg("GML: writeBlockDynamic: storedSize")
+  gmldbg("GML: writeBlockDynamic: calling storedSize(\{input.length()})")
   let (ssize, storable) = stored_size(input.length())
   if storable && ssize < ((size + size) >> 4) {
     gmldbg("GML: writeBlockDynamic: writeStoredHeader")
@@ -805,10 +713,106 @@ fn write_tokens(
   }
 }
 
+// write_block_huff encodes a block of bytes as either
+// Huffman encoded literals or uncompressed bytes if the
+// results only gains very little from compression.
+fn write_block_huff(
+  self : HuffmanBitWriter,
+  eof : Bool,
+  input : Bytes,
+  len : Int
+) -> Unit {
+  gmldbg("GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBlockHuff(eof=\{eof}, input (\{input.length()} bytes)) {")
+  if not(self.err.is_empty()) {
+    return
+  }
+
+  // Clear histogram
+  for i = 0; i < max_num_lit; i = i + 1 {
+    self.literal_freq[i] = 0
+  }
+
+  // Add everything as literals
+  histogram(input, len, self.literal_freq)
+  self.literal_freq[end_block_marker] = 1
+  let num_literals = end_block_marker + 1
+  self.offset_freq[0] = 1
+  let num_offsets = 1
+  self.literal_encoding.generate(Slice::new(self.literal_freq), 15)
+
+  // Figure out smallest code.
+  // Always use dynamic Huffman or Store
+  // let num_codegens = 0
+
+  // Generate codegen and codegen_frequencies, which indicates how to encode
+  // the literal_encoding and the offset_encoding.
+  self.generate_codegen(
+    num_literals,
+    num_offsets,
+    self.literal_encoding,
+    huff_offset,
+  )
+  self.codegen_encoding.generate(Slice::new(self.codegen_freq), 7)
+  let (size, num_codegens) = self.dynamic_size(
+    self.literal_encoding,
+    huff_offset,
+    0,
+  )
+
+  // Store bytes, if we don't get a reasonable improvement.
+  gmldbg("GML: writeBlockHuff: calling storedSize(\{input.length()})")
+  let (ssize, storable) = stored_size(input.length())
+  if storable && ssize < ((size + size) >> 4) {
+    self.write_stored_header(input.length(), eof)
+    self.write_bytes(input)
+    return
+  }
+
+  // Huffman.
+  self.write_dynamic_header(num_literals, num_offsets, num_codegens, eof)
+  let encoding = self.literal_encoding.codes[:257]
+  let mut n = self.nbytes
+  for t in input {
+    // Bitwriting inlined, ~30% speedup
+    let c = encoding[t.to_int()]
+    self.bits = self.bits |
+      (c.code.to_uint64() << self.nbits.reinterpret_as_int())
+    self.nbits += c.len
+    if self.nbits < 48 {
+      continue
+    }
+    // Store 6 bytes
+    let bits = self.bits
+    self.bits = self.bits >> 48
+    self.nbits -= 48
+    // bytes := self.bytes[n : n+6]
+    self.bytes[n + 0] = bits.to_byte()
+    self.bytes[n + 1] = (bits >> 8).to_byte()
+    self.bytes[n + 2] = (bits >> 16).to_byte()
+    self.bytes[n + 3] = (bits >> 24).to_byte()
+    self.bytes[n + 4] = (bits >> 32).to_byte()
+    self.bytes[n + 5] = (bits >> 40).to_byte()
+    n += 6
+    if n < buffer_flush_size {
+      continue
+    }
+    // self.write(self.bytes[:n])
+    let b = Bytes::from_iter(self.bytes.iter().take(n))
+    self.write(b)
+    if not(self.err.is_empty()) {
+      return  // Return early in the event of write failures
+    }
+    n = 0
+  }
+  self.nbytes = n
+  self.write_code(encoding[end_block_marker])
+}
+
 // histogram accumulates a histogram of b in h.
 //
 // len(h) must be >= 256, and h's elements must be all zeroes.
 fn histogram(b : Bytes, len : Int, h : Array[Int]) -> Unit {
+	gmldbg("GML: huffman_bit_writer.go: histogram(b []byte, h []int32) {")
   for i = 0; i < len; i = i + 1 {
     let t = b[i].to_int()
     h[t] += 1
