@@ -18,7 +18,6 @@ struct Reader {
 ///
 /// The [io.ReadCloser] returned by Reader::new also implements [Resetter].
 pub fn Reader::new(r : IOReader) -> Reader {
-  gmldbg("GML: inflate.go: NewReader(r io.Reader) io.ReadCloser {")
   // fixed_huffman_decoder_init()
 
   let d = Decompressor::new(r)

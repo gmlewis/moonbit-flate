@@ -1,7 +1,7 @@
 # gmlewis/flate
 [![check](https://github.com/gmlewis/moonbit-flate/actions/workflows/check.yml/badge.svg)](https://github.com/gmlewis/moonbit-flate/actions/workflows/check.yml)
 
-This is a simple flate compression algorithm based on Go's implementation:
+This is a simplified flate compression algorithm based on Go's implementation:
 https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflatefast.go
 which has the copyright notice:
 
@@ -17,9 +17,9 @@ The code has been updated to support compiler:
 
 ```bash
 $ moon version --all
-moon 0.1.20240910 (0a5e0dc 2024-09-10) ~/.moon/bin/moon
-moonc v0.1.20240910+3af041b9a ~/.moon/bin/moonc
-moonrun 0.1.20240910 (0a5e0dc 2024-09-10) ~/.moon/bin/moonrun
+moon 0.1.20241008 (6b2dd0b 2024-10-08) ~/.moon/bin/moon
+moonc v0.1.20241008+9bf20bff3 ~/.moon/bin/moonc
+moonrun 0.1.20241008 (6b2dd0b 2024-10-08) ~/.moon/bin/moonrun
 ```
 
 Use `moonup` to manage `moon` compiler versions:

@@ -66,16 +66,12 @@ fn match_token(xlength : UInt, xoffset : UInt) -> Token {
 
 // Returns the literal of a literal token.
 fn literal(self : Token) -> UInt {
-  let v = self._ - literal_type
-  gmldbg("GML: token.go: t(\{self._}).literal=\{v}")
-  v
+  self._ - literal_type
 }
 
 // Returns the extra offset of a match token.
 fn offset(self : Token) -> UInt {
-  let v = self._ & offset_mask
-  gmldbg("GML: token.go: t(\{self._}).offset=\{v}")
-  v
+  self._ & offset_mask
 }
 
 test "offset behaves correctly" {
@@ -85,30 +81,22 @@ test "offset behaves correctly" {
 }
 
 fn length(self : Token) -> UInt {
-  let v = (self._ - match_type) >> length_shift
-  gmldbg("GML: token.go: t(\{self._}).length=\{v}")
-  v
+  (self._ - match_type) >> length_shift
 }
 
 fn length_code(len : UInt) -> Int { // -> UInt // Values are always used for indexing, so make them Int
-  gmldbg(
-    "GML: token.go: lengthCode(\{len})=\{length_codes[len.reinterpret_as_int()]}",
-  )
   length_codes[len.reinterpret_as_int()]
 }
 
 fn offset_code(off : UInt) -> Int { // -> UInt // Values are always used for indexing, so make them Int
   if off < offset_codes.length().reinterpret_as_uint() {
     let idx = off.reinterpret_as_int()
-    gmldbg("GML: token.go: offsetCode(\{off}) = \{offset_codes[idx]} A")
     return offset_codes[idx]
   }
   if (off >> 7) < offset_codes.length().reinterpret_as_uint() {
     let idx = (off >> 7).reinterpret_as_int()
-    gmldbg("GML: token.go: offsetCode(\{off}) = \{offset_codes[idx] + 14} B")
     return offset_codes[idx] + 14
   }
   let idx = (off >> 14).reinterpret_as_int()
-  gmldbg("GML: token.go: offsetCode(\{off}) = \{offset_codes[idx] + 28} C")
   offset_codes[idx] + 28
 }

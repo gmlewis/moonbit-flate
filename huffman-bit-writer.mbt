@@ -89,9 +89,6 @@ struct HuffmanBitWriter {
 } derive(Show)
 
 fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
-  gmldbg(
-    "GML: huffman_bit_writer.go: newHuffmanBitWriter(w io.Writer) *huffmanBitWriter {",
-  )
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
   let codegen = Bytes::make(max_num_lit + offset_code_count + 1, b'\x00')
@@ -119,7 +116,6 @@ fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
 }
 
 fn flush(self : HuffmanBitWriter) -> Unit {
-  gmldbg("GML: huffman_bit_writer.go: (w *huffmanBitWriter) flush() {")
   if not(self.err.is_empty()) {
     self.nbits = 0
     return
@@ -141,9 +137,6 @@ fn flush(self : HuffmanBitWriter) -> Unit {
 }
 
 fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) write(b []byte) {: b=\{dump_slice(b)}",
-  )
   if not(self.err.is_empty()) {
     return
   }
@@ -169,15 +162,11 @@ fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
 }
 
 fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBits(b int32, nb uint) {: b=\{b}, nb=\{nb}, self.bits=\{self.bits}, self.nbits=\{self.nbits}",
-  )
   if not(self.err.is_empty()) {
     return
   }
   self.bits = self.bits |
     (b.reinterpret_as_uint().to_uint64() << self.nbits.reinterpret_as_int())
-  gmldbg("GML: huffman_bit_writer.go: writeBits: self.bits=\{self.bits}")
   self.nbits += nb
   if self.nbits >= 48 {
     let bits = self.bits
@@ -201,9 +190,6 @@ fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
 }
 
 fn write_bytes(self : HuffmanBitWriter, bytes : Slice[Byte]) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBytes(bytes (len=\{bytes.length()})) {",
-  )
   if not(self.err.is_empty()) {
     return
   }
@@ -244,13 +230,9 @@ fn generate_codegen(
   lit_enc : HuffmanEncoder,
   off_enc : HuffmanEncoder
 ) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) generateCodegen(numLiterals=\{num_literals}, numOffsets=\{num_offsets}, litEnc, offEnc *huffmanEncoder) {",
-  )
   for i in 0..<self.codegen_freq.length() {
     self.codegen_freq[i] = 0
   }
-  gmldbg("GML: generateCodegen: B")
   // Note that we are using codegen both as a temporary variable for holding
   // a copy of the frequencies, and as the place where we put the result.
   // This is fine because the output is always shorter than the input used
@@ -258,143 +240,81 @@ fn generate_codegen(
   let codegen = self.codegen // cache
   // Copy the concatenated code sizes to codegen. Put a marker at the end.
   // let cgnl = codegen[:num_literals]
-  gmldbg("GML: generateCodegen: C")
   for i in 0..<num_literals {
     codegen[i] = lit_enc.codes[i].len.to_byte()
-    gmldbg(
-      "GML: generateCodegen: C1: i=\{i}, codegen[\{i}] = \{codegen[i].to_int()}",
-    )
   }
-  gmldbg(
-    "GML: generateCodegen: D: off_enc.codes.length()=\{off_enc.codes.length()}, codegen.length()=\{codegen.length()}",
-  )
 
   // cgnl = codegen[num_literals : num_literals+num_offsets]
   for i in 0..<num_offsets {
     codegen[num_literals + i] = off_enc.codes[i].len.to_byte()
-    gmldbg(
-      "GML: generateCodegen: D1: i+numLiterals=\{i+num_literals}, codegen[\{i+num_literals}] = \{codegen[num_literals + i].to_int()}",
-    )
   }
-  gmldbg("GML: generateCodegen: E")
   codegen[num_literals + num_offsets] = bad_code
-  gmldbg(
-    "GML: generateCodegen: F: codegen[\{num_literals+num_offsets}=(numLiterals(\{num_literals})+numOffsets(\{num_offsets}))] = badCode(\{bad_code.to_int()})",
-  )
 
   //
   let mut size = codegen[0]
-  gmldbg("GML: generateCodegen: G")
   let mut count = 1
   let mut out_index = 0
   for in_index = 1; size != bad_code; in_index = in_index + 1 {
-    gmldbg(
-      "GML: generateCodegen: H: inIndex=\{in_index}, size=\{size.to_int()}, len(codegen)=\{codegen.length()}",
-    )
     // INVARIANT: We have seen "count" copies of size that have not yet
     // had output generated for them.
     let next_size = codegen[in_index]
-    gmldbg("GML: generateCodegen: H1: nextSize=\{next_size.to_int()}")
     if next_size == size {
       count += 1
       continue
     }
-    gmldbg("GML: generateCodegen: I")
     // We need to generate codegen indicating "count" of size.
     if size != b'\x00' {
       codegen[out_index] = size
-      gmldbg(
-        "GML: generateCodegen: I1: codegen[\{out_index}] = \{size.to_int()}",
-      )
       out_index += 1
       self.codegen_freq[size.to_int()] += 1
       count -= 1
-      gmldbg("GML: generateCodegen: J")
       while count >= 3 {
-        gmldbg("GML: generateCodegen: J1")
         let mut n = 6
         if n > count {
           n = count
         }
         codegen[out_index] = b'\x10' // 16
-        gmldbg(
-          "GML: generateCodegen: J2: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-        )
         out_index += 1
         codegen[out_index] = (n - 3).to_byte()
-        gmldbg(
-          "GML: generateCodegen: J3: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-        )
         out_index += 1
         self.codegen_freq[16] += 1
         count -= n
-        gmldbg("GML: generateCodegen: K: count=\{count}")
       }
-      gmldbg("GML: generateCodegen: L")
     } else {
-      gmldbg("GML: generateCodegen: M")
       while count >= 11 {
-        gmldbg("GML: generateCodegen: M1")
         let mut n = 138
         if n > count {
           n = count
         }
         codegen[out_index] = b'\x12' // 18
-        gmldbg(
-          "GML: generateCodegen: M2: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-        )
         out_index += 1
         codegen[out_index] = (n - 11).to_byte()
-        gmldbg(
-          "GML: generateCodegen: M3: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-        )
         out_index += 1
         self.codegen_freq[18] += 1
         count -= n
-        gmldbg("GML: generateCodegen: N")
       }
-      gmldbg("GML: generateCodegen: O")
       if count >= 3 {
-        gmldbg("GML: generateCodegen: P")
         // count >= 3 && count <= 10
         codegen[out_index] = b'\x11' // 17
-        gmldbg(
-          "GML: generateCodegen: P1: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-        )
         out_index += 1
         codegen[out_index] = (count - 3).to_byte()
-        gmldbg(
-          "GML: generateCodegen: P2: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-        )
         out_index += 1
         self.codegen_freq[17] += 1
         count = 0
       }
-      gmldbg("GML: generateCodegen: Q")
     }
-    gmldbg("GML: generateCodegen: R")
     count -= 1
     for count = count; count >= 0; count = count - 1 {
-      gmldbg("GML: generateCodegen: S")
       codegen[out_index] = size
-      gmldbg(
-        "GML: generateCodegen: S1: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-      )
       out_index += 1
       self.codegen_freq[size.to_int()] += 1
     }
-    gmldbg("GML: generateCodegen: T")
     // Set up invariant for next time through the loop.
     size = next_size
     count = 1
-    gmldbg("GML: generateCodegen: U")
   }
-  gmldbg("GML: generateCodegen: V")
   // Marker indicating the end of the codegen.
   codegen[out_index] = bad_code
-  gmldbg(
-    "GML: generateCodegen: V1: codegen[\{out_index}] = \{codegen[out_index].to_int()}",
-  )
 }
 
 // dynamic_size returns the size of dynamically encoded data in bits.
@@ -422,17 +342,11 @@ fn dynamic_size(
     lit_enc.bit_length(Slice::new(self.literal_freq)) +
     off_enc.bit_length(Slice::new(self.offset_freq)) +
     extra_bits
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) dynamicSize(litEnc, offEnc *huffmanEncoder, extraBits=\{extra_bits}) (size, numCodegens int) = (size=\{size}, numCodegens=\{num_codegens})",
-  )
   (size, num_codegens)
 }
 
 // fixed_size returns the size of dynamically encoded data in bits.
 fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) fixedSize(extraBits=\{extra_bits}) int {",
-  )
   3 +
   fixed_literal_encoding.bit_length(Slice::new(self.literal_freq)) +
   fixed_offset_encoding.bit_length(Slice::new(self.offset_freq)) +
@@ -444,21 +358,12 @@ fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
 // fits inside a single block.
 fn stored_size(inp_length : Int) -> (Int, Bool) {
   if inp_length == 0 {
-    gmldbg(
-      "GML: huffman_bit_writer.go: (w *huffmanBitWriter) storedSize(in (\{inp_length} bytes)) = 0 A",
-    )
     return (0, false)
   }
   if inp_length <= max_store_block_size {
     let v = (inp_length + 5) * 8
-    gmldbg(
-      "GML: huffman_bit_writer.go: (w *huffmanBitWriter) storedSize(in (\{inp_length} bytes)) = \{v} B",
-    )
     return (v, true)
   }
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) storedSize(in (\{inp_length} bytes)) = 0 C",
-  )
   (0, false)
 }
 
@@ -505,9 +410,6 @@ fn write_dynamic_header(
   num_codegens : Int,
   is_eof : Bool
 ) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeDynamicHeader(numLiterals=\{num_literals}, numOffsets=\{num_offsets}, numCodegens=\{num_codegens}, isEof=\{is_eof}) {",
-  )
   if not(self.err.is_empty()) {
     return
   }
@@ -515,18 +417,13 @@ fn write_dynamic_header(
   if is_eof {
     first_bits = 5
   }
-  gmldbg("GML: writeDynamicHeader: A")
   self.write_bits(first_bits, 3)
-  gmldbg("GML: writeDynamicHeader: B")
   self.write_bits(num_literals - 257, 5)
-  gmldbg("GML: writeDynamicHeader: C")
   self.write_bits(num_offsets - 1, 5)
-  gmldbg("GML: writeDynamicHeader: D")
   self.write_bits(num_codegens - 4, 4)
 
   //
   for i in 0..<num_codegens {
-    gmldbg("GML: writeDynamicHeader: E: i=\{i}")
     let value = self.codegen_encoding.codes[codegen_order[i]].len.reinterpret_as_int()
     self.write_bits(value, 3)
   }
@@ -534,7 +431,6 @@ fn write_dynamic_header(
   //
   let mut i = 0
   for {
-    gmldbg("GML: writeDynamicHeader: F: i=\{i}")
     let code_word = self.codegen[i]
     i += 1
     if code_word == bad_code {
@@ -543,17 +439,14 @@ fn write_dynamic_header(
     self.write_code(self.codegen_encoding.codes[code_word.to_int()])
     match code_word.to_int() {
       16 => {
-        gmldbg("GML: writeDynamicHeader: G")
         self.write_bits(self.codegen[i].to_int(), 2)
         i += 1
       }
       17 => {
-        gmldbg("GML: writeDynamicHeader: H")
         self.write_bits(self.codegen[i].to_int(), 3)
         i += 1
       }
       18 => {
-        gmldbg("GML: writeDynamicHeader: I")
         self.write_bits(self.codegen[i].to_int(), 7)
         i += 1
       }
@@ -567,9 +460,6 @@ fn write_stored_header(
   length : Int,
   is_eof : Bool
 ) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeStoredHeader(length=\{length}, isEof=\{is_eof}) {",
-  )
   if not(self.err.is_empty()) {
     return
   }
@@ -591,9 +481,6 @@ fn write_block_dynamic(
   eof : Bool,
   input : Slice[Byte]
 ) -> Unit {
-  gmldbg(
-    "\nGML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBlockDynamic(tokens []token, eof bool, input []byte) {",
-  )
   if not(self.err.is_empty()) {
     return
   }
@@ -604,16 +491,13 @@ fn write_block_dynamic(
 
   // Generate codegen and codegen_frequencies, which indicates how to encode
   // the literal_encoding and the offset_encoding.
-  gmldbg("GML: writeBlockDynamic: generateCodegen")
   self.generate_codegen(
     num_literals,
     num_offsets,
     self.literal_encoding,
     self.offset_encoding,
   )
-  gmldbg("GML: writeBlockDynamic: generate")
   self.codegen_encoding.generate(Slice::new(self.codegen_freq), 7)
-  gmldbg("GML: writeBlockDynamic: dynamicSize")
   let (size, numCodegens) = self.dynamic_size(
     self.literal_encoding,
     self.offset_encoding,
@@ -621,22 +505,17 @@ fn write_block_dynamic(
   )
 
   // Store bytes, if we don't get a reasonable improvement.
-  gmldbg("GML: writeBlockDynamic: calling storedSize(\{input.length()})")
   let (ssize, storable) = stored_size(input.length())
   if storable && ssize < ((size + size) >> 4) {
-    gmldbg("GML: writeBlockDynamic: writeStoredHeader")
     self.write_stored_header(input.length(), eof)
-    gmldbg("GML: writeBlockDynamic: writeBytes")
     self.write_bytes(input)
     return
   }
 
   // Write Huffman table.
-  gmldbg("GML: writeBlockDynamic: writeDynamicHeader")
   self.write_dynamic_header(num_literals, num_offsets, numCodegens, eof)
 
   // Write the tokens.
-  gmldbg("GML: writeBlockDynamic: writeTokens")
   self.write_tokens(
     tokens,
     self.literal_encoding.codes,
@@ -649,9 +528,6 @@ fn write_block_dynamic(
 // and offset_encoding.
 // The number of literal and offset tokens is returned.
 fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) indexTokens(tokens []token) (numLiterals, numOffsets int) {",
-  )
   for i in 0..<self.literal_freq.length() {
     self.literal_freq[i] = 0
   }
@@ -660,8 +536,7 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
   }
 
   //
-  for i, t in tokens {
-    gmldbg("GML: indexTokens: tokens[\{i}]=\{t._}")
+  for t in tokens {
     if t._ < match_type {
       self.literal_freq[t.literal().reinterpret_as_int()] += 1
       continue
@@ -671,19 +546,12 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
     self.literal_freq[length_codes_start + length_code(length)] += 1
     let code = offset_code(offset)
     self.offset_freq[code] += 1
-    gmldbg(
-      "GML: indexTokens: self.offset_freq[\{code}] = \{self.offset_freq[code]}",
-    )
   }
 
   // get the number of literals
   let mut num_literals = self.literal_freq.length()
   while self.literal_freq[num_literals - 1] == 0 {
     num_literals -= 1
-  }
-  gmldbg("GML: indexTokens: numLiterals=\{num_literals}")
-  for i = 0; i < self.offset_freq.length(); i = i + 1 {
-    gmldbg("GML: indexTokens: offsetFreq[\{i}]=\{self.offset_freq[i]}")
   }
   // get the number of offsets
   let mut num_offsets = self.offset_freq.length()
@@ -696,10 +564,7 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
     self.offset_freq[0] = 1
     num_offsets = 1
   }
-  gmldbg("GML: indexTokens: numOffsets=\{num_offsets}")
-  gmldbg("GML: indexTokens: literalEncoding.generate")
   self.literal_encoding.generate(Slice::new(self.literal_freq), 15)
-  gmldbg("GML: indexTokens: offsetEncoding.generate")
   self.offset_encoding.generate(Slice::new(self.offset_freq), 15)
   (num_literals, num_offsets)
 }
@@ -749,9 +614,6 @@ fn write_block_huff(
   eof : Bool,
   input : Slice[Byte]
 ) -> Unit {
-  gmldbg(
-    "GML: huffman_bit_writer.go: (w *huffmanBitWriter) writeBlockHuff(eof=\{eof}, input (\{input.length()} bytes)) {",
-  )
   if not(self.err.is_empty()) {
     return
   }
@@ -789,7 +651,6 @@ fn write_block_huff(
   )
 
   // Store bytes, if we don't get a reasonable improvement.
-  gmldbg("GML: writeBlockHuff: calling storedSize(\{input.length()})")
   let (ssize, storable) = stored_size(input.length())
   if storable && ssize < ((size + size) >> 4) {
     self.write_stored_header(input.length(), eof)
@@ -840,7 +701,6 @@ fn write_block_huff(
 //
 // len(h) must be >= 256, and h's elements must be all zeroes.
 fn histogram(b : Slice[Byte], h : Array[Int]) -> Unit {
-  gmldbg("GML: huffman_bit_writer.go: histogram(b []byte, h []int32) {")
   for i in 0..<b.length() {
     let t = b[i].to_int()
     h[t] += 1
