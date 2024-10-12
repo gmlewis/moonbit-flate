@@ -1,5 +1,3 @@
-// -*- compile-command: "moon test --target js > got.txt"; -*-
-
 // This file is based on the Go implementation found here:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflatefast.go
 // which has the copyright notice:
@@ -27,8 +25,6 @@ let table_shift : Int = 32 - table_bits // Right-shift to get the table_bits mos
 
 let base_match_length = 3 // The smallest match length per the RFC section 3.2.5
 
-// let min_match_length = 4 // The smallest match length that the compressor actually emits
-
 let max_match_length = 258 // The largest match length
 
 let base_match_offset = 1 // The smallest match offset
@@ -38,17 +34,7 @@ let max_match_offset : Int = 1 << 15 // The largest match offset
 // The maximum number of tokens we put into a single flate block, just to
 // stop things from getting too large.
 
-// let max_flate_block_tokens : Int = 1 << 14
-
 let max_store_block_size = 65535
-
-// let hash_bits = 17 // After 17 performance degrades
-
-// let hash_size : Int = 1 << hash_bits
-
-// let hash_mask : Int = (1 << hash_bits) - 1
-
-// let max_hash_offset : Int = 1 << 24
 
 // Reset the buffer offset when reaching this.
 // Offsets are stored between blocks as Int values.
@@ -56,7 +42,7 @@ let max_store_block_size = 65535
 // of the buffer, we need to subtract the current and input
 // buffer to not risk overflowing the Int.
 
-let bufferReset : Int = @int.max_value - max_store_block_size * 2
+let buffer_reset : Int = @int.max_value - max_store_block_size * 2
 
 fn load32(b : Slice[Byte], i : Int) -> UInt {
   return b[i + 0].to_uint() |
@@ -120,7 +106,7 @@ fn encode(
 ) -> Array[Token] {
   let mut dst = dst
   // Ensure that self.cur doesn't wrap.
-  if self.cur >= bufferReset {
+  if self.cur >= buffer_reset {
     self.shift_offsets()
   }
 
@@ -281,9 +267,6 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
 
   // If we are inside the current block
   if t >= 0 {
-    // let b = src[t:]
-    // let a = src[s:s1]
-    // b = b[:len(a)]
     let a_length = s1 - s
     // Extend the match to be as long as possible.
     for i = 0; i < a_length; i = i + 1 {
@@ -301,17 +284,11 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
   }
 
   // Extend the match to be as long as possible.
-  // a := src[s:s1]
   let a_length = s1 - s
-  // b := self.prev[tp:]
   let mut b_length = self.prev.length() - tp
-  // if len(b) > len(a) {
-  // 	b = b[:len(a)]
-  // }
   if b_length > a_length {
     b_length = a_length
   }
-  // a = a[:len(b)]
   for i = 0; i < b_length; i = i + 1 {
     if src[s + i] != self.prev[tp + i] {
       return i
@@ -320,16 +297,13 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
 
   // If we reached our limit, we matched everything we are
   // allowed to in the previous block and we return.
-  // n := Int(len(b))
   let n = b_length
   if s + n == s1 {
     return n
   }
 
   // Continue looking for more matches in the current block.
-  // a = src[s+n : s1]
   let a_length = s1 - (s + n)
-  // b = src[:len(a)]
   for i = 0; i < a_length; i = i + 1 {
     if src[s + n + i] != src[i] {
       return i + n
@@ -347,7 +321,7 @@ fn reset(self : DeflateFast) -> Unit {
   self.cur += max_match_offset
 
   // Protect against self.cur wraparound.
-  if self.cur >= bufferReset {
+  if self.cur >= buffer_reset {
     self.shift_offsets()
   }
 }

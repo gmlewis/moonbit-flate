@@ -5,7 +5,7 @@ struct Writer {
 
 /// `Writer::new` returns a new [Writer] compressing data at the "BestSpeed" level.
 /// It writes its (compressed) data to the provided `buf`.
-pub fn Writer::new(buf : Buffer) -> Writer {
+pub fn Writer::new(buf : @buffer.Buffer) -> Writer {
   let d = Compressor::new(buf)
   // let dict = Bytes::new(0)
   // { d, dict }

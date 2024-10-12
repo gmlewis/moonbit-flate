@@ -7,7 +7,7 @@ pub trait IOReadCloser {
 let io_read_closer_buf_size = 1024
 
 pub fn to_bytes(self : IOReadCloser) -> Bytes!Error {
-  let buf = Buffer::new()
+  let buf = @buffer.new()
   let b = Bytes::new(io_read_closer_buf_size)
   for {
     let n = try {

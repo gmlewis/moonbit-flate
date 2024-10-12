@@ -44,12 +44,6 @@ fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
     rd_pos: 0,
     full: false,
   }
-
-  // if cap(dd.hist) < size {
-  // 	dd.hist = make([]byte, size)
-  // }
-  // dd.hist = dd.hist[:size]
-
   let mut dict = dict
   if dict.length() > size {
     dict = dict[dict.length() - size:]
@@ -137,13 +131,7 @@ fn write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
   // strings can be succinctly represented using (dist, length) pairs.
   // Thus, a forwards copy is performed here; that is, the bytes copied is
   // possibly dependent on the resulting bytes in the destination as the copy
-  // progresses along. This is functionally equivalent to the following:
-  //
-  //	for i := 0; i < end_pos-dst_pos; i++ {
-  //		self.hist[dst_pos+i] = self.hist[src_pos+i]
-  //	}
-  //	dst_pos = end_pos
-  //
+  // progresses along.
   while dst_pos < end_pos {
     dst_pos += slice_copy(
       self.hist[dst_pos:end_pos],
@@ -173,7 +161,7 @@ fn try_write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
 
   // Copy possibly overlapping section before destination position.
   while dst_pos < end_pos {
-    dst_pos += slice_copy( // TODO: Use blit here?
+    dst_pos += slice_copy(
       self.hist[dst_pos:end_pos],
       self.hist[src_pos:dst_pos],
     )

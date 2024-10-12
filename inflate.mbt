@@ -40,58 +40,25 @@ impl Show for InternalError with output(self, logger) {
   logger.write_string("flate: internal error: \{s}")
 }
 
-// // A ReadError reports an error encountered while reading input.
-// //
-// // Deprecated: No longer returned.
-// type ReadError struct {
-// 	Offset int64 // byte offset where error occurred
-// 	Err    error // error returned by underlying Read
-// }
+// The data structure for decoding Huffman tables is based on that of
+// zlib. There is a lookup table of a fixed bit width (huffman_chunk_bits),
+// For codes smaller than the table width, there are multiple entries
+// (each combination of trailing bits has the same value). For codes
+// larger than the table width, the table contains a link to an overflow
+// table. The width of each entry in the link table is the maximum code
+// size minus the chunk width.
+//
+// Note that you can do a lookup in the table even without all bits
+// filled. Since the extra bits are zero, and the DEFLATE Huffman codes
+// have the property that shorter codes come before longer ones, the
+// bit length estimate in the result is a lower bound on the actual
+// number of bits.
+//
+// See the following:
+//	https://github.com/madler/zlib/raw/master/doc/algorithm.txt
 
-// func (e *ReadError) Error() string {
-// 	read error at offset " + strconv.FormatInt(e.Offset, 10) + ": " + e.Err.Error()
-// }
-
-// // A WriteError reports an error encountered while writing output.
-// //
-// // Deprecated: No longer returned.
-// type WriteError struct {
-// 	Offset int64 // byte offset where error occurred
-// 	Err    error // error returned by underlying Write
-// }
-
-// func (e *WriteError) Error() string {
-// 	return "flate: write error at offset " + strconv.FormatInt(e.Offset, 10) + ": " + e.Err.Error()
-// }
-
-// // Resetter resets a ReadCloser returned by [NewReader] or [NewReaderDict]
-// // to switch to a new underlying [Reader]. This permits reusing a ReadCloser
-// // instead of allocating a new one.
-// type Resetter interface {
-// 	// Reset discards any buffered data and resets the Resetter as if it was
-// 	// newly initialized with the given reader.
-// 	Reset(r io.Reader, dict []byte) error
-// }
-
-// // The data structure for decoding Huffman tables is based on that of
-// // zlib. There is a lookup table of a fixed bit width (huffman_chunk_bits),
-// // For codes smaller than the table width, there are multiple entries
-// // (each combination of trailing bits has the same value). For codes
-// // larger than the table width, the table contains a link to an overflow
-// // table. The width of each entry in the link table is the maximum code
-// // size minus the chunk width.
-// //
-// // Note that you can do a lookup in the table even without all bits
-// // filled. Since the extra bits are zero, and the DEFLATE Huffman codes
-// // have the property that shorter codes come before longer ones, the
-// // bit length estimate in the result is a lower bound on the actual
-// // number of bits.
-// //
-// // See the following:
-// //	https://github.com/madler/zlib/raw/master/doc/algorithm.txt
-
-// // chunk & 15 is number of bits
-// // chunk >> 4 is value, including table link
+// chunk & 15 is number of bits
+// chunk >> 4 is value, including table link
 
 let huffman_chunk_bits = 9
 
@@ -196,9 +163,6 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
       let mut reverse = reverse16(j & 0xffff).reinterpret_as_int()
       reverse = reverse >> (16 - huffman_chunk_bits)
       let off = j - link.reinterpret_as_uint()
-      // if sanity && self.chunks[reverse] != 0 {
-      //   abort("impossible: overwriting existing chunk")
-      // }
       self.chunks[reverse] = (off << huffman_value_shift) |
         (huffman_chunk_bits + 1).reinterpret_as_uint()
       self.links[off.reinterpret_as_int()] = Array::make(
@@ -226,57 +190,20 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
         // never a valid chunk, because the
         // lower 4 "count" bits should be
         // between 1 and 15.
-        // if sanity && self.chunks[off] != 0 {
-        //   abort("impossible: overwriting existing chunk")
-        // }
         self.chunks[off] = chunk
       }
     } else {
       let j = reverse & (huffman_num_chunks - 1).reinterpret_as_int()
-      // if sanity &&
-      //   (self.chunks[j] & (huffman_count_mask != huffman_chunk_bits + 1)) {
-      //   // Longer codes should have been
-      //   // associated with a link table above.
-      //   abort("impossible: not an indirect chunk")
-      // }
       let value = self.chunks[j] >> huffman_value_shift
       let linktab = self.links[value.reinterpret_as_int()]
       reverse = reverse >> huffman_chunk_bits
       for off = reverse
           off < linktab.length()
           off = off + (1 << (n - huffman_chunk_bits)) {
-        // if sanity && linktab[off] != 0 {
-        //   abort("impossible: overwriting existing chunk")
-        // }
         linktab[off] = chunk
       }
     }
   }
-
-  // if sanity {
-  // 	// Above we've sanity checked that we never overwrote
-  // 	// an existing entry. Here we additionally check that
-  // 	// we filled the tables completely.
-  // 	for i, chunk := range self.chunks {
-  // 		if chunk == 0 {
-  // 			// As an exception, in the degenerate
-  // 			// single-code case, we allow odd
-  // 			// chunks to be missing.
-  // 			if code == 1 && i%2 == 1 {
-  // 				continue
-  // 			}
-  // 			panic("impossible: missing chunk")
-  // 		}
-  // 	}
-  // 	for _, linktab := range self.links {
-  // 		for _, chunk := range linktab {
-  // 			if chunk == 0 {
-  // 				panic("impossible: missing chunk")
-  // 			}
-  // 		}
-  // 	}
-  // }
-
   true
 }
 
@@ -750,8 +677,6 @@ fn copy_data(self : Decompressor) -> Unit {
   if buf.length() > self.copy_len {
     buf = buf[:self.copy_len]
   }
-
-  // cnt, err := io.ReadFull(self.r, buf)
   let cnt = try {
     self.r.read_full!(buf)
   } catch {

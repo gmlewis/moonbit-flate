@@ -1,5 +1,3 @@
-// -*- compile-command: "moon test --target js > got.txt"; -*-
-
 // This file is based on the Go implementation found here:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/huffman_code.go
 // which has the copyright notice:
@@ -10,10 +8,7 @@
 struct HuffmanEncoder {
   codes : Array[HCode]
   mut freqcache : Array[LiteralNode]
-  // bit_count : FixedArray[Int] // [17]Int
   bit_count : Array[Int] // [17]Int
-  // lns       : byLiteral // stored to avoid repeated allocation in generate
-  // lfs       : byFreq    // stored to avoid repeated allocation in generate
 } derive(Show, Eq)
 
 fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
@@ -24,7 +19,6 @@ fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
     codes[i] = { code: 0U, len: 0U }
   }
   let freqcache = []
-  // let bit_count = FixedArray::make(17, 0)
   let bit_count = Array::make(17, 0)
   { codes, freqcache, bit_count }
 }
@@ -161,7 +155,6 @@ fn bit_counts(
   //
   let mut level = max_bits
   for {
-    // let l = levels[level]
     if levels[level].next_pair_freq == @int.max_value &&
       levels[level].next_char_freq == @int.max_value {
       // We've run out of both leafs and pairs.
@@ -223,7 +216,6 @@ fn bit_counts(
   if leaf_counts[max_bits][max_bits] != n {
     abort("leaf_counts[max_bits][max_bits] != n")
   }
-  // 	bitCount := h.bitCount[:maxBits+1]
   let bit_count = Slice::new(self.bit_count)[:max_bits + 1]
   let mut bits = 1
   let counts = leaf_counts[max_bits]
@@ -245,7 +237,6 @@ fn assign_encoding_and_size(
 ) -> Unit {
   let mut list = list
   let mut code = 0
-  // for n, bits := range bit_count {
   for n, bits in bit_count {
     code = code << 1
     if n == 0 || bits == 0 {
@@ -256,7 +247,6 @@ fn assign_encoding_and_size(
     // code, code + 1, ....  The code values are
     // assigned in literal order (not frequency order).
     let chunk = list[list.length() - bits:]
-    // quick_sort_by(chunk, by_literal, None, get_limit(chunk.length()))
     quicksort(chunk, by_literal)
     for node in chunk {
       let key = node.literal.reinterpret_as_int()
@@ -320,7 +310,6 @@ fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
     }
     return
   }
-  // quick_sort_by(list, by_frequency, None, get_limit(list.length()))
   quicksort(list, by_frequency)
 
   // Get the number of literals for each bit count

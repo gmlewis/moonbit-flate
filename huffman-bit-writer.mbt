@@ -1,5 +1,3 @@
-// -*- compile-command: "moon test --target js > got.txt"; -*-
-
 // This file is based on the Go implementation found here:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/huffman_bit_writer.go
 // which has the copyright notice:
@@ -68,7 +66,7 @@ struct HuffmanBitWriter {
   // writer is the underlying writer.
   // Do not use it directly; use the write method, which ensures
   // that Write errors are sticky.
-  writer : Buffer
+  writer : @buffer.Buffer
 
   // Data waiting to be written is bytes[0:nbytes]
   // and then the low nbits of bits.  Data is always written
@@ -76,7 +74,6 @@ struct HuffmanBitWriter {
   mut bits : UInt64
   mut nbits : UInt
   bytes : Array[Byte] // [buffer_size]byte
-  // codegen_freq : FixedArray[Int] // [codegen_code_count]int32
   codegen_freq : Array[Int] // [codegen_code_count]int32
   mut nbytes : Int
   literal_freq : Array[Int]
@@ -88,7 +85,7 @@ struct HuffmanBitWriter {
   mut err : Error?
 } derive(Show)
 
-fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
+fn HuffmanBitWriter::new(writer : @buffer.Buffer) -> HuffmanBitWriter {
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
   let codegen = Bytes::make(max_num_lit + offset_code_count + 1, b'\x00')
@@ -96,7 +93,6 @@ fn HuffmanBitWriter::new(writer : Buffer) -> HuffmanBitWriter {
   let codegen_encoding = HuffmanEncoder::new(codegen_code_count)
   let offset_encoding = HuffmanEncoder::new(offset_code_count)
   let bytes = Array::make(buffer_size, b'\x00') // [buffer_size]byte
-  // let codegen_freq = FixedArray::make(codegen_code_count, 0) // [codegen_code_count]int32
   let codegen_freq = Array::make(codegen_code_count, 0) // [codegen_code_count]int32
   {
     writer,
@@ -140,18 +136,9 @@ fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
-  // self.writer.write_bytes(b)
   for byte in b {
     self.writer.write_byte(byte)
   }
-}
-
-pub fn dump_bytes(buf : Bytes) -> String {
-  buf
-  .to_array()
-  .map(fn(b) { b.to_int() })
-  .to_string()
-  .replace_all(old=",", new="")
 }
 
 fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
@@ -173,7 +160,6 @@ fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
     self.bits = self.bits >> 48
     self.nbits -= 48
     let mut n = self.nbytes
-    // let bytes = self.bytes[n : n+6]
     self.bytes[n + 0] = bits.to_byte()
     self.bytes[n + 1] = (bits >> 8).to_byte()
     self.bytes[n + 2] = (bits >> 16).to_byte()
@@ -222,7 +208,7 @@ fn write_bytes(self : HuffmanBitWriter, bytes : Slice[Byte]) -> Unit {
 //
 //	num_literals      The number of literals in literal_encoding
 //	num_offsets       The number of offsets in offset_encoding
-//	litenc, offenc   The literal and offset encoder to use
+//	litenc, offenc    The literal and offset encoder to use
 fn generate_codegen(
   self : HuffmanBitWriter,
   num_literals : Int,
@@ -239,12 +225,9 @@ fn generate_codegen(
   // so far.
   let codegen = self.codegen // cache
   // Copy the concatenated code sizes to codegen. Put a marker at the end.
-  // let cgnl = codegen[:num_literals]
   for i in 0..<num_literals {
     codegen[i] = lit_enc.codes[i].len.to_byte()
   }
-
-  // cgnl = codegen[num_literals : num_literals+num_offsets]
   for i in 0..<num_offsets {
     codegen[num_literals + i] = off_enc.codes[i].len.to_byte()
   }
@@ -379,7 +362,6 @@ fn write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
     self.bits = self.bits >> 48
     self.nbits -= 48
     let mut n = self.nbytes
-    // let bytes = self.bytes[n:n + 6]
     self.bytes[n + 0] = bits.to_byte()
     self.bytes[n + 1] = (bits >> 8).to_byte()
     self.bytes[n + 2] = (bits >> 16).to_byte()
@@ -388,7 +370,6 @@ fn write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
     self.bytes[n + 5] = (bits >> 40).to_byte()
     n += 6
     if n >= buffer_flush_size {
-      // self.write(self.bytes[:n])
       for i in 0..<n {
         self.write_byte(self.bytes[i])
       }
@@ -541,8 +522,8 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
       self.literal_freq[t.literal().reinterpret_as_int()] += 1
       continue
     }
-    let length = t.length() // .reinterpret_as_int()
-    let offset = t.offset() // .reinterpret_as_int()
+    let length = t.length()
+    let offset = t.offset()
     self.literal_freq[length_codes_start + length_code(length)] += 1
     let code = offset_code(offset)
     self.offset_freq[code] += 1
@@ -633,7 +614,6 @@ fn write_block_huff(
 
   // Figure out smallest code.
   // Always use dynamic Huffman or Store
-  // let num_codegens = 0
 
   // Generate codegen and codegen_frequencies, which indicates how to encode
   // the literal_encoding and the offset_encoding.
@@ -663,7 +643,6 @@ fn write_block_huff(
   let encoding = self.literal_encoding.codes[:257]
   let mut n = self.nbytes
   for t in input {
-    // Bitwriting inlined, ~30% speedup
     let c = encoding[t.to_int()]
     self.bits = self.bits |
       (c.code.to_uint64() << self.nbits.reinterpret_as_int())
@@ -675,7 +654,6 @@ fn write_block_huff(
     let bits = self.bits
     self.bits = self.bits >> 48
     self.nbits -= 48
-    // bytes := self.bytes[n : n+6]
     self.bytes[n + 0] = bits.to_byte()
     self.bytes[n + 1] = (bits >> 8).to_byte()
     self.bytes[n + 2] = (bits >> 16).to_byte()
@@ -686,7 +664,6 @@ fn write_block_huff(
     if n < buffer_flush_size {
       continue
     }
-    // self.write(self.bytes[:n])
     self.write(Slice::new(self.bytes)[:n])
     if not(self.err.is_empty()) {
       return  // Return early in the event of write failures

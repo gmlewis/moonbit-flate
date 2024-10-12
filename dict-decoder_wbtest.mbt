@@ -207,8 +207,8 @@ test "DictDecoder" {
     (108, 3),
     (0, 2),
   ]
-  let got = Buffer::new()
-  let want = Buffer::new()
+  let got = @buffer.new()
+  let want = @buffer.new()
   let dd = DictDecoder::new(1 << 11, Slice::new([]))
   let write_copy = fn(dist, length) {
     let mut length = length
@@ -287,4 +287,29 @@ test "DictDecoder" {
   if got != want {
     abort("final string mismatch:\ngot  \{got}\nwant \{want}")
   }
+}
+
+/// `bytes2str` decodes a UTF-8 `Bytes` to a UTF-16 `String`.
+fn bytes2str(b : Bytes) -> String {
+  let chars = (b.iter() |> @decoder.utf8()).collect()
+  let buf = @buffer.new(size_hint=chars.length())
+  for ch in chars {
+    buf.write_char(ch)
+  }
+  buf.to_string()
+}
+
+test "bytes2str works on simple case" {
+  let got = bytes2str(b"simple case")
+  assert_eq!(got, "simple case")
+}
+
+/// `str2bytes` encodes a UTF-16 `String` as a UTF-8 `Bytes`.
+fn str2bytes(s : String) -> Bytes {
+  s.iter() |> @encoder.utf8() |> Bytes::from_iter()
+}
+
+test "str2bytes works on simple case" {
+  let got = str2bytes("simple case")
+  assert_eq!(got, b"simple case")
 }

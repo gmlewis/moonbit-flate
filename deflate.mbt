@@ -1,5 +1,3 @@
-// -*- compile-command: "moon test --target js > got.txt"; -*-
-
 // This file is based on the Go implementation found here:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/compress/flate/deflate.go
 // which has the copyright notice:
@@ -8,59 +6,30 @@
 // license that can be found in the LICENSE file.
 
 struct Compressor {
-  // compressionLevel
-
   w : HuffmanBitWriter
-  // bulkHasher func([]byte, []uint32)
 
   // compression algorithm
-  // fill      func(*compressor, []byte) int // copy data to window
-  // step      func(*compressor)             // process window
   best_speed : DeflateFast // Encoder for best_speed
 
-  // Input hash chains
-  // hashHead[hashValue] contains the largest inputIndex with the specified hash value
-  // If hashHead[hashValue] is within the current window, then
-  // hashPrev[hashHead[hashValue] & windowMask] contains the previous index
-  // with the same hash value.
-  // chainHead  int
-  // hashHead   [hashSize]uint32
-  // hashPrev   [windowSize]uint32
-  // hashOffset int
-
-  // input window: unprocessed data is window[index:window_end]
-  // mut index : Int
+  // input window: unprocessed data is window[:window_end]
   window : Slice[Byte]
   mut window_end : Int
-  // blockStart    int  // window index where current tokens start
-  // byteAvailable bool // if true, still need to process window[index-1].
-
   mut sync : Bool // requesting flush
 
   // queued output tokens
   mut tokens : Array[Token]
 
   // deflate state
-  // length         int
-  // offset         int
-  // maxInsertIndex int
   mut err : Error?
-
-  // hashMatch must be able to contain hashes for the maximum match length.
-  // hashMatch [maxMatchLength - 1]uint32
 } derive(Show)
 
-fn Compressor::new(buf : Buffer) -> Compressor {
-  // d.compressionLevel = levels[level]
+fn Compressor::new(buf : @buffer.Buffer) -> Compressor {
   let w = HuffmanBitWriter::new(buf)
   {
     w,
-    // index: 0,
     window: Slice::new(Array::make(max_store_block_size, b'\x00')),
     window_end: 0,
     sync: false,
-    // fill:  (*compressor).fillStore,
-    // step:  (*compressor).encSpeed,
     best_speed: DeflateFast::new(),
     tokens: Array::make(max_store_block_size, 0),
     err: None,
@@ -105,7 +74,6 @@ fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> Error? {
 
 fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
   let n = minimum(self.window.length() - self.window_end, b.length())
-  // let n = copy(self.window[self.window_end:], b)
   for i in 0..<n {
     self.window[self.window_end + i] = b[i]
   }
@@ -140,14 +108,12 @@ fn enc_speed(self : Compressor) -> Unit {
     }
   }
   // Encode the block.
-  // self.tokens = self.best_speed.encode([], self.window[:self.window_end])
   self.tokens = self.best_speed.encode([], self.window[:self.window_end])
 
   // If we removed less than 1/16th, Huffman compress the block.
   if self.tokens.length() > self.window_end - (self.window_end >> 4) {
     self.w.write_block_huff(false, self.window[:self.window_end])
   } else {
-    // self.w.write_block_dynamic(self.tokens, false, self.window[:self.window_end])
     self.w.write_block_dynamic(
       self.tokens,
       false,

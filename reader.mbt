@@ -12,15 +12,7 @@ struct Reader {
 /// `Reader::new` returns a new Reader that can be used
 /// to read the uncompressed version of r.
 pub fn Reader::new(r : IOReader) -> Reader {
-  // fixed_huffman_decoder_init()
-
   let d = Decompressor::new(r)
-  // f.makeReader(r)
-  // f.bits = new([maxNumLit + maxNumDist]int)
-  // f.codebits = new([numCodes]int)
-  // f.step = (*decompressor).nextBlock
-  // f.dict.init(max_match_offset, nil)
-  // return &f
   { d, }
 }
 
