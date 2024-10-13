@@ -1,7 +1,3 @@
-pub trait IOWriter {
-  write(Self, Bytes) -> Int!Error
-}
-
 struct Writer {
   d : Compressor
   // dict : Bytes

@@ -49,7 +49,7 @@ test "TestBestSpeed" {
       tc[0] = first_n
       let buf = @buffer.new()
       let want = @buffer.new()
-      let w = @flate.Writer::new(buf)
+      let w = @flate.Writer::new(@flate.IOWriter::from_buffer(buf))
       for n in tc {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
