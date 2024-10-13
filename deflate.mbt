@@ -21,9 +21,9 @@ struct Compressor {
 
   // deflate state
   mut err : Error?
-} derive(Show)
+}
 
-fn Compressor::new(buf : @buffer.Buffer) -> Compressor {
+fn Compressor::new(buf : IOWriter) -> Compressor {
   let w = HuffmanBitWriter::new(buf)
   {
     w,

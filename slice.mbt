@@ -208,3 +208,8 @@ pub fn op_equal[T : Eq](self : Slice[T], other : Slice[T]) -> Bool {
     continue i + 1
   }
 }
+
+/// to_bytes returns slice as Bytes.
+pub fn to_bytes(self : Slice[Byte]) -> Bytes {
+  Bytes::from_iter(self.iter())
+}

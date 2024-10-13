@@ -1,3 +1,7 @@
+pub trait IOWriter {
+  write(Self, Bytes) -> Int!Error
+}
+
 struct Writer {
   d : Compressor
   // dict : Bytes
@@ -5,7 +9,7 @@ struct Writer {
 
 /// `Writer::new` returns a new [Writer] compressing data at the "BestSpeed" level.
 /// It writes its (compressed) data to the provided `buf`.
-pub fn Writer::new(buf : @buffer.Buffer) -> Writer {
+pub fn Writer::new(buf : IOWriter) -> Writer {
   let d = Compressor::new(buf)
   // let dict = Bytes::new(0)
   // { d, dict }
@@ -19,7 +23,7 @@ pub fn write(self : Writer, data : Bytes) -> Int!Error {
 
 /// `close` closes the input to the flate Writer.
 /// After closing the Writer, the compressed data can be read
-/// from the `Buffer` provided to `new`.
+/// from the `IOWriter` provided to `new`.
 pub fn close(self : Writer) -> Unit!Error {
   self.d.close!()
 }

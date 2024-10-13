@@ -66,7 +66,7 @@ struct HuffmanBitWriter {
   // writer is the underlying writer.
   // Do not use it directly; use the write method, which ensures
   // that Write errors are sticky.
-  writer : @buffer.Buffer
+  writer : IOWriter
 
   // Data waiting to be written is bytes[0:nbytes]
   // and then the low nbits of bits.  Data is always written
@@ -83,9 +83,9 @@ struct HuffmanBitWriter {
   offset_encoding : HuffmanEncoder
   codegen_encoding : HuffmanEncoder
   mut err : Error?
-} derive(Show)
+}
 
-fn HuffmanBitWriter::new(writer : @buffer.Buffer) -> HuffmanBitWriter {
+fn HuffmanBitWriter::new(writer : IOWriter) -> HuffmanBitWriter {
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
   let codegen = Bytes::make(max_num_lit + offset_code_count + 1, b'\x00')
@@ -136,8 +136,11 @@ fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
-  for byte in b {
-    self.writer.write_byte(byte)
+  try {
+    let _ = self.writer.write!(b.to_bytes())
+
+  } catch {
+    e => self.err = Some(e)
   }
 }
 
@@ -145,7 +148,12 @@ fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
-  self.writer.write_byte(b)
+  try {
+    let _ = self.writer.write!(Bytes::from_array([b]))
+
+  } catch {
+    e => self.err = Some(e)
+  }
 }
 
 fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
