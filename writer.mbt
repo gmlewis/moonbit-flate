@@ -13,7 +13,7 @@ pub fn Writer::new(buf : IOWriter) -> Writer {
 }
 
 /// `write` writes the provided data to the flate Writer.
-pub fn write(self : Writer, data : Bytes) -> Int!Error {
+pub fn write(self : Writer, data : Slice[Byte]) -> Int!Error {
   self.d.write!(data)
 }
 
