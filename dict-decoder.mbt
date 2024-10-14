@@ -26,7 +26,7 @@
 /// checks about the arguments. As such, the invariants documented for each
 /// method call must be respected.
 struct DictDecoder {
-  mut hist : Slice[Byte] // []byte // Sliding window history
+  hist : Slice[Byte] // []byte // Sliding window history
 
   // Invariant: 0 <= rd_pos <= wr_pos <= len(hist)
   mut wr_pos : Int // Current output position in buffer

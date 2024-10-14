@@ -3,7 +3,7 @@ pub trait IOWriter {
   write(Self, ArrayView[Byte]) -> Int!Error
 }
 
-pub fn IOWriter::from_buffer(buf : @buffer.Buffer) -> IOWriter {
+pub fn IOWriter::from_buffer(buf : @buffer.Buffer) -> IOWriter { // doesn't work: BufferIOWriter {
   { always_false: false, buf }
 }
 

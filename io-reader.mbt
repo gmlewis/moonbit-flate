@@ -8,7 +8,7 @@ pub trait IOReader {
   read_full(Self, ArrayView[Byte]) -> Int!Error
 }
 
-pub fn IOReader::from_buffer(buf : @buffer.Buffer) -> IOReader {
+pub fn IOReader::from_buffer(buf : @buffer.Buffer) -> IOReader { // doesn't work: BufferIOReader {
   { bytes: buf.to_bytes(), offset: 0 }
 }
 
