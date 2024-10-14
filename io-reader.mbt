@@ -1,4 +1,4 @@
-type! IOEOF  derive(Show)
+pub type! IOEOF  derive(Show)
 
 type! IOErrUnexpectedEOF  derive(Show)
 
