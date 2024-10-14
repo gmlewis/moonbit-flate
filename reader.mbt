@@ -21,6 +21,11 @@ pub fn to_bytes(self : Reader) -> Bytes!Error {
   self.d.to_bytes!()
 }
 
+/// `read` enables `Reader to implement `IOReadCloser`.
+pub fn read(self : Reader, bytes : Slice[Byte]) -> Int!Error {
+  self.d.read!(bytes)
+}
+
 /// `close` enables `Reader` to implement `IOReadCloser`.
 pub fn close(self : Reader) -> Unit!Error {
   self.d.close!()

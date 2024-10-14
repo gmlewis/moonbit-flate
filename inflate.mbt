@@ -312,7 +312,7 @@ fn next_block(self : Decompressor) -> Unit {
   }
 }
 
-fn read(self : Decompressor, b : Bytes) -> Int!Error {
+fn read(self : Decompressor, b : Slice[Byte]) -> Int!Error {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
