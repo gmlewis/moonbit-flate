@@ -20,3 +20,8 @@ pub fn Reader::new(r : IOReader) -> Reader {
 pub fn to_bytes(self : Reader) -> Bytes!Error {
   self.d.to_bytes!()
 }
+
+/// `close` enables `Reader` to implement `IOReadCloser`.
+pub fn close(self : Reader) -> Unit!Error {
+  self.d.close!()
+}
