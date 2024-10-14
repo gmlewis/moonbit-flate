@@ -137,7 +137,7 @@ fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
     return
   }
   try {
-    let _ = self.writer.write!(b)
+    let _ = self.writer.write!(b.as_array_view())
 
   } catch {
     e => self.err = Some(e)
@@ -149,7 +149,7 @@ fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
     return
   }
   try {
-    let _ = self.writer.write!(Slice::new([b]))
+    let _ = self.writer.write!([b][:])
 
   } catch {
     e => self.err = Some(e)

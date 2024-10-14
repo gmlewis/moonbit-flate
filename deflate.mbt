@@ -124,7 +124,7 @@ fn enc_speed(self : Compressor) -> Unit {
   self.window_end = 0
 }
 
-pub fn write(self : Compressor, b : Slice[Byte]) -> Int!Error {
+fn write(self : Compressor, b : Slice[Byte]) -> Int!Error {
   if not(self.err.is_empty()) {
     raise self.err.unwrap()
   }

@@ -5,7 +5,7 @@ type! IOErrUnexpectedEOF  derive(Show)
 /// `IOReader` is similar to Go's `io.Reader` interface.
 pub trait IOReader {
   read_byte(Self) -> Byte!Error
-  read_full(Self, Slice[Byte]) -> Int!Error
+  read_full(Self, ArrayView[Byte]) -> Int!Error
 }
 
 pub fn IOReader::from_buffer(buf : @buffer.Buffer) -> IOReader {
@@ -27,7 +27,7 @@ fn read_byte(self : BufferIOReader) -> Byte!Error {
   b
 }
 
-fn read_full(self : BufferIOReader, b : Slice[Byte]) -> Int!Error {
+fn read_full(self : BufferIOReader, b : ArrayView[Byte]) -> Int!Error {
   let remaining = self.bytes.length() - self.offset
   let n = b.length()
   if remaining < n {

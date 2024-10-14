@@ -56,7 +56,7 @@ test "TestBestSpeed" {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
         want.write_bytes(subset)
-        let _ = w.write!(@flate.Slice::new(subset.to_array()))
+        let _ = w.write!(subset.to_array()[:])
         // if not(flush) {
         // continue
         // }

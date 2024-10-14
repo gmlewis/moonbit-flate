@@ -1,6 +1,6 @@
 /// `IOWriter` is similar to Go's `io.Writer` interface.
 pub trait IOWriter {
-  write(Self, Slice[Byte]) -> Int!Error
+  write(Self, ArrayView[Byte]) -> Int!Error
 }
 
 pub fn IOWriter::from_buffer(buf : @buffer.Buffer) -> IOWriter {
@@ -12,7 +12,7 @@ struct BufferIOWriter {
   buf : @buffer.Buffer
 }
 
-fn write(self : BufferIOWriter, b : Slice[Byte]) -> Int!Error {
+fn write(self : BufferIOWriter, b : ArrayView[Byte]) -> Int!Error {
   if self.always_false {
     raise fail!("compiler workaround - must raise something to satisfy trait")
   }

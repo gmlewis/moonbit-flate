@@ -9,7 +9,7 @@ struct Reader {
   d : IOReadCloser
 }
 
-/// `Reader::new` returns a new Reader that can be used
+/// `Reader::new` returns a new [@flate.IOReadCloser] that can be used
 /// to read the uncompressed version of r.
 pub fn Reader::new(r : IOReader) -> Reader {
   let d = Decompressor::new(r)
@@ -22,7 +22,7 @@ pub fn to_bytes(self : Reader) -> Bytes!Error {
 }
 
 /// `read` enables `Reader to implement `IOReadCloser`.
-pub fn read(self : Reader, bytes : Slice[Byte]) -> Int!Error {
+pub fn read(self : Reader, bytes : ArrayView[Byte]) -> Int!Error {
   self.d.read!(bytes)
 }
 

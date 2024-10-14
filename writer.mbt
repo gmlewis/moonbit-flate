@@ -3,7 +3,7 @@ struct Writer {
   // dict : Bytes
 }
 
-/// `Writer::new` returns a new [Writer] compressing data at the "BestSpeed" level.
+/// `Writer::new` returns a new [@flate.IOWriteCloser] compressing data at the "BestSpeed" level.
 /// It writes its (compressed) data to the provided `buf`.
 pub fn Writer::new(buf : IOWriter) -> Writer {
   let d = Compressor::new(buf)
@@ -13,8 +13,9 @@ pub fn Writer::new(buf : IOWriter) -> Writer {
 }
 
 /// `write` writes the provided data to the flate Writer.
-pub fn write(self : Writer, data : Slice[Byte]) -> Int!Error {
-  self.d.write!(data)
+pub fn write(self : Writer, data : ArrayView[Byte]) -> Int!Error {
+  let data = Array::from_iter(data.iter()) // unfortunate copy
+  self.d.write!(Slice::new(data))
 }
 
 /// `close` closes the input to the flate Writer.

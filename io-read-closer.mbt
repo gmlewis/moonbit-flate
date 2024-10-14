@@ -1,6 +1,6 @@
 /// `IOReadCloser` is similar to Go's `io.ReadCloser`.
 pub trait IOReadCloser {
-  read(Self, Slice[Byte]) -> Int!Error
+  read(Self, ArrayView[Byte]) -> Int!Error
   close(Self) -> Unit!Error
 }
 
@@ -11,7 +11,7 @@ pub fn to_bytes(self : IOReadCloser) -> Bytes!Error {
   let b = Array::make(io_read_closer_buf_size, b'\x00')
   for {
     let n = try {
-      self.read!(Slice::new(b))
+      self.read!(b[:])
     } catch {
       IOEOF => 0
       e => raise e

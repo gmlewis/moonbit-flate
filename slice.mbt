@@ -71,6 +71,11 @@ pub fn Slice::new[T](buf : Array[T], ~start : Int = 0, ~end? : Int) -> Slice[T] 
   Slice::{ buf, start, len: end - start }
 }
 
+pub fn as_array_view[T](self : Slice[T]) -> ArrayView[T] {
+  let end = self.len + self.start
+  self.buf[self.start:end]
+}
+
 pub fn op_as_view[T](self : Slice[T], ~start : Int, ~end? : Int) -> Slice[T] {
   let len = self.buf.length()
   let end = match end {

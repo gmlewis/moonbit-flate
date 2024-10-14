@@ -312,7 +312,7 @@ fn next_block(self : Decompressor) -> Unit {
   }
 }
 
-fn read(self : Decompressor, b : Slice[Byte]) -> Int!Error {
+fn read(self : Decompressor, b : ArrayView[Byte]) -> Int!Error {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -338,14 +338,6 @@ fn read(self : Decompressor, b : Slice[Byte]) -> Int!Error {
       _ => ()
     }
   }
-}
-
-pub fn dump_slice(buf : Slice[Byte]) -> String {
-  let arr = Array::new(capacity=buf.length())
-  for i in 0..<buf.length() {
-    arr.push(buf[i].to_int())
-  }
-  arr.to_string().replace_all(old=",", new="")
 }
 
 fn close(self : Decompressor) -> Unit!Error {
@@ -647,7 +639,7 @@ fn data_block(self : Decompressor) -> Unit {
 
   // Length then ones-complement of length.
   let nr = try {
-    self.r.read_full!(Slice::new(self.buf)[0:4])
+    self.r.read_full!(self.buf[0:4])
   } catch {
     err => {
       self.err = Some(no_eof(err))
@@ -678,7 +670,7 @@ fn copy_data(self : Decompressor) -> Unit {
     buf = buf[:self.copy_len]
   }
   let cnt = try {
-    self.r.read_full!(buf)
+    self.r.read_full!(buf.as_array_view())
   } catch {
     err => {
       self.err = Some(no_eof(err))
