@@ -1,10 +1,27 @@
+// This file is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.2:src/io/io.go
+// which has the copyright notice:
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 pub type! IOEOF  derive(Show)
 
 type! IOErrUnexpectedEOF  derive(Show)
 
 /// `IOReader` is similar to Go's `io.Reader` interface.
 pub trait IOReader {
+  /// ReadByte reads and returns the next byte from the input or
+  /// any error encountered. If ReadByte returns an error, no input
+  /// byte was consumed, and the returned byte value is undefined.
   read_byte(Self) -> Byte!Error
+  /// ReadFull reads exactly len(buf) bytes from r into buf.
+  /// It returns the number of bytes copied and an error if fewer bytes were read.
+  /// The error is EOF only if no bytes were read.
+  /// If an EOF happens after reading some but not all the bytes,
+  /// ReadFull returns [ErrUnexpectedEOF].
+  /// On return, n == len(buf) if and only if err == nil.
+  /// If r returns an error having read at least len(buf) bytes, the error is dropped.
   read_full(Self, ArrayView[Byte]) -> Int!Error
 }
 
