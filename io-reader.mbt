@@ -56,3 +56,25 @@ fn read_full(self : BufferIOReader, b : ArrayView[Byte]) -> Int!Error {
   self.offset += n
   n
 }
+
+let io_read_buf_size = 1024
+
+pub fn read_all(self : IOReader) -> Bytes!Error {
+  let buf = @buffer.new()
+  let b = Array::make(io_read_buf_size, b'\x00')
+  for {
+    let n = try {
+      self.read_full!(b[:])
+    } catch {
+      IOEOF => 0
+      e => raise e
+    }
+    if n == 0 {
+      break
+    }
+    for i = 0; i < n; i = i + 1 {
+      buf.write_byte(b[i])
+    }
+  }
+  buf.to_bytes()
+}
