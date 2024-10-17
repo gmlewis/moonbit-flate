@@ -563,7 +563,7 @@ fn read_literal(self : Decompressor) -> Unit {
         guard let None = self.err else { _ => return  }
 
       }
-      let to_rev = (self.b & (0x1F << 3).reinterpret_as_uint()).to_byte()
+      let to_rev = ((self.b & 0x1F) << 3).to_byte()
       dist = reverse8(to_rev).to_int()
       self.b = self.b >> 5
       self.nb -= 5
