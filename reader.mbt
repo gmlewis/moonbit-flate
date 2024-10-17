@@ -22,8 +22,8 @@ pub fn to_bytes(self : Reader) -> Bytes!Error {
 }
 
 /// `read` enables `Reader to implement `IOReadCloser`.
-pub fn read(self : Reader, bytes : ArrayView[Byte]) -> Int!Error {
-  self.d.read!(bytes)
+pub fn read(self : Reader, bytes : ArrayView[Byte]) -> (Int, Error?) {
+  self.d.read(bytes)
 }
 
 /// `close` enables `Reader` to implement `IOReadCloser`.

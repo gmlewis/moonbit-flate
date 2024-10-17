@@ -22,7 +22,7 @@ pub trait IOReader {
   /// ReadFull returns [ErrUnexpectedEOF].
   /// On return, n == len(buf) if and only if err == nil.
   /// If r returns an error having read at least len(buf) bytes, the error is dropped.
-  read_full(Self, ArrayView[Byte]) -> Int!Error
+  read_full(Self, ArrayView[Byte]) -> (Int, Error?)
 }
 
 pub fn IOReader::from_buffer(buf : @buffer.Buffer) -> IOReader { // doesn't work: BufferIOReader {
@@ -44,17 +44,17 @@ fn read_byte(self : BufferIOReader) -> Byte!Error {
   b
 }
 
-fn read_full(self : BufferIOReader, b : ArrayView[Byte]) -> Int!Error {
+fn read_full(self : BufferIOReader, b : ArrayView[Byte]) -> (Int, Error?) {
   let remaining = self.bytes.length() - self.offset
   let n = b.length()
   if remaining < n {
-    raise IOEOF
+    return (0, Some(IOEOF))
   }
   for i = 0; i < n; i = i + 1 {
     b[i] = self.bytes[self.offset + i]
   }
   self.offset += n
-  n
+  (n, None)
 }
 
 let io_read_buf_size = 1024
@@ -63,11 +63,11 @@ pub fn read_all(self : IOReader) -> Bytes!Error {
   let buf = @buffer.new()
   let b = Array::make(io_read_buf_size, b'\x00')
   for {
-    let n = try {
-      self.read_full!(b[:])
-    } catch {
-      IOEOF => 0
-      e => raise e
+    let (n, err) = self.read_full(b[:])
+    match err {
+      Some(IOEOF) => ()
+      Some(err) => raise err
+      _ => ()
     }
     if n == 0 {
       break

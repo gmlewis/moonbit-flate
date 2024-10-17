@@ -136,24 +136,16 @@ fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
-  try {
-    let _ = self.writer.write!(b.as_array_view())
-
-  } catch {
-    e => self.err = Some(e)
-  }
+  let (_, err) = self.writer.write(b.as_array_view())
+  self.err = err
 }
 
 fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
-  try {
-    let _ = self.writer.write!([b][:])
-
-  } catch {
-    e => self.err = Some(e)
-  }
+  let (_, err) = self.writer.write([b][:])
+  self.err = err
 }
 
 fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {

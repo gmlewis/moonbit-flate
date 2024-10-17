@@ -124,9 +124,9 @@ fn enc_speed(self : Compressor) -> Unit {
   self.window_end = 0
 }
 
-fn write(self : Compressor, b : Slice[Byte]) -> Int!Error {
+fn write(self : Compressor, b : Slice[Byte]) -> (Int, Error?) {
   if not(self.err.is_empty()) {
-    raise self.err.unwrap()
+    return (0, self.err)
   }
   let mut b : Slice[Byte] = Slice::new(Array::from_iter(b.iter()))
   let n = b.length()
@@ -134,8 +134,8 @@ fn write(self : Compressor, b : Slice[Byte]) -> Int!Error {
     self.enc_speed()
     b = b[self.fill_store(b):]
     if not(self.err.is_empty()) {
-      raise self.err.unwrap()
+      return (0, self.err)
     }
   }
-  return n
+  (n, None)
 }

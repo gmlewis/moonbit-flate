@@ -56,7 +56,11 @@ test "TestBestSpeed" {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
         want.write_bytes(subset)
-        let _ = w.write!(subset.to_array()[:])
+        let (_, err) = w.write(subset.to_array()[:])
+        match err {
+          Some(_) => abort("error: \{err}")
+          _ => ()
+        }
         // if not(flush) {
         // continue
         // }

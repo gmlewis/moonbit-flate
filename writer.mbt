@@ -13,9 +13,9 @@ pub fn Writer::new(buf : IOWriter) -> Writer {
 }
 
 /// `write` writes the provided data to the flate Writer.
-pub fn write(self : Writer, data : ArrayView[Byte]) -> Int!Error {
+pub fn write(self : Writer, data : ArrayView[Byte]) -> (Int, Error?) {
   let data = Array::from_iter(data.iter()) // unfortunate copy
-  self.d.write!(Slice::new(data))
+  self.d.write(Slice::new(data))
 }
 
 /// `close` closes the input to the flate Writer.

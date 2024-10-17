@@ -312,7 +312,7 @@ fn next_block(self : Decompressor) -> Unit {
   }
 }
 
-fn read(self : Decompressor, b : ArrayView[Byte]) -> Int!Error {
+fn read(self : Decompressor, b : ArrayView[Byte]) -> (Int, Error?) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -323,10 +323,13 @@ fn read(self : Decompressor, b : ArrayView[Byte]) -> Int!Error {
         b[i] = self.to_read[i]
       }
       self.to_read = self.to_read[n:]
-      return n
+      if self.to_read.length() == 0 {
+        return (n, self.err)
+      }
+      return (n, None)
     }
     match self.err {
-      Some(err) => raise err
+      Some(_) => return (0, self.err)
       _ => ()
     }
     (self.step._)(self)
@@ -402,10 +405,10 @@ fn read_huffman(self : Decompressor) -> Error? {
   let mut i = 0
   let n = nlit + ndist
   while i < n {
-    let x = try {
-      self.huff_sym!(self.h1)
-    } catch {
-      err => return Some(err)
+    let (x, err) = self.huff_sym(self.h1)
+    match err {
+      Some(e) => return Some(e)
+      _ => ()
     }
     if x < 16 {
       // Actual length.
@@ -490,13 +493,13 @@ fn huffman_block(self : Decompressor) -> Unit {
 /// read_literal:
 /// Read literal and/or (length, distance) according to RFC section 3.2.3.
 fn read_literal(self : Decompressor) -> Unit {
-  let v = try {
-    self.huff_sym!(self.hl.unwrap())
-  } catch {
-    err => {
+  let (v, err) = self.huff_sym(self.hl.unwrap())
+  match err {
+    Some(err) => {
       self.err = Some(err)
       return
     }
+    _ => ()
   }
   let mut n = 0U // number of bits extra
   let mut length = 0
@@ -568,15 +571,17 @@ fn read_literal(self : Decompressor) -> Unit {
       self.b = self.b >> 5
       self.nb -= 5
     }
-    Some(hd) =>
-      dist = try {
-        self.huff_sym!(hd)
-      } catch {
-        err => {
+    Some(hd) => {
+      let (d, err) = self.huff_sym(hd)
+      dist = d
+      match err {
+        Some(err) => {
           self.err = Some(err)
           return
         }
+        _ => ()
       }
+    }
   }
 
   //
@@ -638,15 +643,15 @@ fn data_block(self : Decompressor) -> Unit {
   self.b = 0
 
   // Length then ones-complement of length.
-  let nr = try {
-    self.r.read_full!(self.buf[0:4])
-  } catch {
-    err => {
+  let (nr, err) = self.r.read_full(self.buf[0:4])
+  self.roffset += nr.to_int64()
+  match err {
+    Some(err) => {
       self.err = Some(no_eof(err))
       return
     }
+    _ => ()
   }
-  self.roffset += nr.to_int64()
   let n = self.buf[0].to_int() | (self.buf[1].to_int() << 8)
   let nn = self.buf[2].to_int() | (self.buf[3].to_int() << 8)
   if (nn & 0xffff) != (n.lnot() & 0xffff) {
@@ -669,17 +674,19 @@ fn copy_data(self : Decompressor) -> Unit {
   if buf.length() > self.copy_len {
     buf = buf[:self.copy_len]
   }
-  let cnt = try {
-    self.r.read_full!(buf.as_array_view())
-  } catch {
-    err => {
-      self.err = Some(no_eof(err))
-      return
-    }
-  }
+  let (cnt, err) = self.r.read_full(buf.as_array_view())
   self.roffset += cnt.to_int64()
   self.copy_len -= cnt
   self.dict.write_mark(cnt)
+  match err {
+    Some(err) => {
+      self.err = Some(no_eof(err))
+      return
+    }
+    _ => ()
+  }
+
+  //
   if self.dict.avail_write() == 0 || self.copy_len > 0 {
     self.to_read = self.dict.read_flush()
     self.step = copy_data
@@ -719,7 +726,7 @@ fn more_bits(self : Decompressor) -> Error? {
 }
 
 /// Read the next Huffman-encoded symbol from f according to h.
-fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
+fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, Error?) {
   // Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // with single element, huff_sym must error on these two edge cases. In both
   // cases, the chunks slice will be 0 for the invalid sequence, leading it
@@ -738,7 +745,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
         err => {
           self.b = b
           self.nb = nb
-          raise no_eof(err)
+          return (0, Some(no_eof(err)))
         }
       }
       self.roffset += 1
@@ -758,14 +765,13 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> Int!Error {
       if n == 0 {
         self.b = b
         self.nb = nb
-        let err = CorruptInputError(self.roffset)
-        self.err = Some(err)
-        raise err
+        self.err = Some(CorruptInputError(self.roffset))
+        return (0, self.err)
       }
       self.b = b >> (n & 31).reinterpret_as_int()
       self.nb = nb - n
       let v = (chunk >> huffman_value_shift).reinterpret_as_int()
-      return v
+      return (v, None)
     }
   }
 }
