@@ -322,7 +322,7 @@ fn next_block(self : Decompressor) -> Unit {
   }
 }
 
-fn read(self : Decompressor, b : ArrayView[Byte]) -> (Int, IOError?) {
+fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -726,7 +726,7 @@ fn no_eof(e : IOError) -> IOError {
 fn more_bits(self : Decompressor) -> IOError? {
   let (c, err) = self.r.read_byte()
   match err {
-    Some(_) => return Some(err)
+    Some(_) => return err
     _ => ()
   }
   self.roffset += 1
@@ -751,10 +751,10 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
     while nb < n {
       let (c, err) = self.r.read_byte()
       match err {
-        Some(_) => {
+        Some(e) => {
           self.b = b
           self.nb = nb
-          return (0, Some(no_eof(err)))
+          return (0, Some(no_eof(e)))
         }
       }
       self.roffset += 1
