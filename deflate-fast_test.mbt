@@ -49,9 +49,7 @@ test "TestBestSpeed" {
       tc[0] = first_n
       let buf = @buffer.new()
       let want = @buffer.new()
-      let w : @flate.IOWriteCloser = @flate.Writer::new(
-        @flate.IOWriter::from_buffer(buf),
-      )
+      let w : @io.WriteCloser = @flate.Writer::new(@io.Writer::from_buffer(buf))
       for n in tc {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
@@ -70,9 +68,7 @@ test "TestBestSpeed" {
       w.close!()
 
       //
-      let r : @flate.IOReadCloser = @flate.Reader::new(
-        @flate.IOReader::from_buffer(buf),
-      )
+      let r : @io.ReadCloser = @flate.Reader::new(Reader::from_buffer(buf))
       let got = r.to_bytes!()
       try {
         assert_eq!(got, want)
