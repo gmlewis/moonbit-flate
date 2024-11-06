@@ -53,8 +53,15 @@ test "TestBestSpeed" {
       for n in tc {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
-        guard let (_, None) = want.write_bytes(subset)
-        guard let (_, None) = w.write(@io.Slice::new(subset.to_array()))
+        guard let (_, None) = want.write_bytes(subset) else {
+          e =>
+            abort(
+              "test #\{i}: want.write_bytes(subset): unexpected error: \{e}",
+            )
+        }
+        guard let (_, None) = w.write(@io.Slice::new(subset.to_array())) else {
+          e => abort("test #\{i}: w.write(): unexpected error: \{e}")
+        }
         // if not(flush) {
         // continue
         // }
