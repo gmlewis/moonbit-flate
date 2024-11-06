@@ -46,7 +46,6 @@ test "TestBestSpeed" {
   for tc in test_cases {
     for first_n in [1, 65534, 65535, 65536, 65537, 131072] {
       i += 1
-      println("Running test #\{i}")
       tc[0] = first_n
       let buf = @io.Buffer::new()
       let want = @io.Buffer::new()
@@ -74,13 +73,13 @@ test "TestBestSpeed" {
       }
 
       //
-      let got = @io.Slice::new([])
-      let r : @io.ReadCloser = @flate.Reader::new(buf)
-      guard let (_, None) = r.read(got)
+      let got = @io.Buffer::new()
+      let r = @flate.Reader::new(buf)
+      guard let (_, None) = @io.copy(got, r) else {
+        e => abort("test #\{i}: @io.copy: \{e}")
+      }
       try {
         let got = got.to_bytes()
-        println("test #\{i}: got: \{got.to_array()}")
-        println("test #\{i}: want: \{want.to_array()}")
         assert_eq!(got, want)
       } catch {
         _ => abort("test #\{i} FAILED")
