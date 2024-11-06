@@ -74,7 +74,7 @@ test "TestBestSpeed" {
 
       //
       let got = @io.Buffer::new()
-      let r = @flate.Reader::new(buf)
+      let r : @io.ReadCloser = @flate.Reader::new(buf)
       guard let (_, None) = @io.copy(got, r) else {
         e => abort("test #\{i}: @io.copy: \{e}")
       }
