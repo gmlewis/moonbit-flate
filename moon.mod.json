@@ -1,7 +1,9 @@
 {
   "name": "gmlewis/flate",
-  "version": "0.13.0",
-  "deps": {},
+  "version": "0.15.0",
+  "deps": {
+    "gmlewis/io": "0.2.0"
+  },
   "readme": "README.md",
   "repository": "https://github.com/gmlewis/moonbit-flate",
   "license": "Apache-2.0",

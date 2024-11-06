@@ -47,19 +47,20 @@ test "TestBestSpeed" {
     for first_n in [1, 65534, 65535, 65536, 65537, 131072] {
       i += 1
       tc[0] = first_n
-      let buf = @buffer.new()
-      let want = @buffer.new()
-      let w : @flate.IOWriteCloser = @flate.Writer::new(
-        @flate.IOWriter::from_buffer(buf),
-      )
+      let buf = @io.Buffer::new()
+      let want = @io.Buffer::new()
+      let w : @io.WriteCloser = @flate.Writer::new(buf)
       for n in tc {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
-        want.write_bytes(subset)
-        let (_, err) = w.write(subset.to_array()[:])
-        match err {
-          Some(_) => abort("error: \{err}")
-          _ => ()
+        guard let (_, None) = want.write_bytes(subset) else {
+          e =>
+            abort(
+              "test #\{i}: want.write_bytes(subset): unexpected error: \{e}",
+            )
+        }
+        guard let (_, None) = w.write(@io.Slice::new(subset.to_array())) else {
+          e => abort("test #\{i}: w.write(): unexpected error: \{e}")
         }
         // if not(flush) {
         // continue
@@ -67,14 +68,18 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      w.close!()
+      guard let None = w.close() else {
+        e => abort("test #\{i}: w.close(): unexpected error: \{e}")
+      }
 
       //
-      let r : @flate.IOReadCloser = @flate.Reader::new(
-        @flate.IOReader::from_buffer(buf),
-      )
-      let got = r.to_bytes!()
+      let got = @io.Buffer::new()
+      let r : @io.ReadCloser = @flate.Reader::new(buf)
+      guard let (_, None) = @io.copy(got, r) else {
+        e => abort("test #\{i}: @io.copy: \{e}")
+      }
       try {
+        let got = got.to_bytes()
         assert_eq!(got, want)
       } catch {
         _ => abort("test #\{i} FAILED")

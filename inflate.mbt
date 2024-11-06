@@ -9,6 +9,12 @@
 // RFC 1951.  The gzip and zlib packages implement access to DEFLATE-based file
 // formats.
 
+typealias Slice[T] = @io.Slice[T]
+
+typealias IOError = @io.IOError
+
+pub let ioeof : IOError = @io.eof
+
 let max_code_len = 16 // max length of Huffman code
 // The next three numbers come from the RFC section 3.2.7, with the
 // additional proviso in section 3.2.5 which implies that distance codes
@@ -20,24 +26,14 @@ let max_num_dist = 30
 
 let num_codes = 19 // number of codes in Huffman meta-code
 
-/// A CorruptInputError reports the presence of corrupt input at a given offset.
-pub type! CorruptInputError Int64
-
-impl Show for CorruptInputError with output(self, logger) {
-  let v = match self {
-    CorruptInputError(v) => v
-  }
-  logger.write_string("flate: corrupt input before offset \{v}")
+/// A corrupt_input_error reports the presence of corrupt input at a given offset.
+fn corrupt_input_error(v : Int64) -> IOError {
+  IOError("flate: corrupt input before offset \{v}")
 }
 
-/// An InternalError reports an error in the flate code itself.
-pub type! InternalError String
-
-impl Show for InternalError with output(self, logger) {
-  let s = match self {
-    InternalError(s) => s
-  }
-  logger.write_string("flate: internal error: \{s}")
+/// An internal_error reports an error in the flate code itself.
+fn internal_error(s : String) -> IOError {
+  IOError("flate: internal error: \{s}")
 }
 
 // The data structure for decoding Huffman tables is based on that of
@@ -207,10 +203,24 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   true
 }
 
+/// The actual read interface needed by [Decompressor::new].
+pub trait Reader {
+  // @io.Reader
+  read(Self, Slice[Byte]) -> (Int, IOError?)
+  // @io.ByteReader
+  read_byte(Self) -> (Byte, IOError?)
+}
+
+/// `Reader::new` returns a new [@io.ReadCloser] that can be used
+/// to read the uncompressed version of r.
+pub fn Reader::new(r : Reader) -> Decompressor {
+  Decompressor::new(r)
+}
+
 // Decompress state.
 struct Decompressor {
   // Input source.
-  mut r : IOReader
+  mut r : Reader
   mut roffset : Int64
 
   // Input bits, in top of b.
@@ -236,7 +246,7 @@ struct Decompressor {
   mut step : StepFunc
   mut step_state : StepState
   mut final : Bool
-  mut err : Error?
+  mut err : IOError?
   mut to_read : Slice[Byte] // []byte
   mut hl : HuffmanDecoder?
   mut hd : HuffmanDecoder?
@@ -251,7 +261,7 @@ enum StepState {
 
 type StepFunc (Decompressor) -> Unit
 
-fn Decompressor::new(r : IOReader) -> Decompressor {
+fn Decompressor::new(r : Reader) -> Decompressor {
   {
     r,
     roffset: 0,
@@ -308,11 +318,11 @@ fn next_block(self : Decompressor) -> Unit {
     }
     _ =>
       // 3 is reserved.
-      self.err = Some(CorruptInputError(self.roffset))
+      self.err = Some(corrupt_input_error(self.roffset))
   }
 }
 
-fn read(self : Decompressor, b : ArrayView[Byte]) -> (Int, Error?) {
+pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -333,22 +343,17 @@ fn read(self : Decompressor, b : ArrayView[Byte]) -> (Int, Error?) {
       _ => ()
     }
     (self.step._)(self)
-    match self.err {
-      Some(IOEOF) =>
-        if self.to_read.length() == 0 {
-          self.to_read = self.dict.read_flush() // Flush what's left in case of error
-        }
-      _ => ()
+    if None != self.err && self.to_read.length() == 0 {
+      self.to_read = self.dict.read_flush() // Flush what's left in case of error
     }
   }
 }
 
-fn close(self : Decompressor) -> Unit!Error {
-  match self.err {
-    Some(IOEOF) => return
-    Some(err) => raise err
-    _ => return
+pub fn close(self : Decompressor) -> IOError? {
+  if Some(ioeof) == self.err {
+    return None
   }
+  self.err
 }
 
 // RFC 1951 section 3.2.7.
@@ -358,7 +363,7 @@ let code_order = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
-fn read_huffman(self : Decompressor) -> Error? {
+fn read_huffman(self : Decompressor) -> IOError? {
   // HLIT[5], HDIST[5], HCLEN[4].
   while self.nb < 5U + 5 + 4 {
     match self.more_bits() {
@@ -368,12 +373,12 @@ fn read_huffman(self : Decompressor) -> Error? {
   }
   let nlit = (self.b & 0x1F).reinterpret_as_int() + 257
   if nlit > max_num_lit {
-    return Some(CorruptInputError(self.roffset))
+    return Some(corrupt_input_error(self.roffset))
   }
   self.b = self.b >> 5
   let ndist = (self.b & 0x1F).reinterpret_as_int() + 1
   if ndist > max_num_dist {
-    return Some(CorruptInputError(self.roffset))
+    return Some(corrupt_input_error(self.roffset))
   }
   self.b = self.b >> 5
   let nclen = (self.b & 0xF).reinterpret_as_int() + 4
@@ -397,7 +402,7 @@ fn read_huffman(self : Decompressor) -> Error? {
     self.codebits[code_order[i]] = 0
   }
   if not(self.h1.initialize(Slice::new(self.codebits))) {
-    return Some(CorruptInputError(self.roffset))
+    return Some(corrupt_input_error(self.roffset))
   }
 
   // HLIT + 257 code lengths, HDIST + 1 code lengths,
@@ -425,7 +430,7 @@ fn read_huffman(self : Decompressor) -> Error? {
         rep = 3
         nb = 2
         if i == 0 {
-          return Some(CorruptInputError(self.roffset))
+          return Some(corrupt_input_error(self.roffset))
         }
         b = self.bits[i - 1]
       }
@@ -439,7 +444,7 @@ fn read_huffman(self : Decompressor) -> Error? {
         nb = 7
         b = 0
       }
-      _ => return Some(InternalError("unexpected length code"))
+      _ => return Some(internal_error("unexpected length code"))
     }
     while self.nb < nb {
       match self.more_bits() {
@@ -453,7 +458,7 @@ fn read_huffman(self : Decompressor) -> Error? {
     self.b = self.b >> nb.reinterpret_as_int()
     self.nb -= nb
     if i + rep > n {
-      return Some(CorruptInputError(self.roffset))
+      return Some(corrupt_input_error(self.roffset))
     }
     for j = 0; j < rep; j = j + 1 {
       self.bits[i] = b
@@ -464,7 +469,7 @@ fn read_huffman(self : Decompressor) -> Error? {
   //
   if not(self.h1.initialize(Slice::new(self.bits)[0:nlit])) ||
     not(self.h2.initialize(Slice::new(self.bits)[nlit:nlit + ndist])) {
-    return Some(CorruptInputError(self.roffset))
+    return Some(corrupt_input_error(self.roffset))
   }
 
   // As an optimization, we can initialize the min bits to read at a time
@@ -540,7 +545,7 @@ fn read_literal(self : Decompressor) -> Unit {
     length = 258
     n = 0
   } else {
-    self.err = Some(CorruptInputError(self.roffset))
+    self.err = Some(corrupt_input_error(self.roffset))
     return
   }
 
@@ -602,13 +607,13 @@ fn read_literal(self : Decompressor) -> Unit {
     self.nb -= nb
     dist = (1 << (nb + 1).reinterpret_as_int()) + 1 + extra
   } else {
-    self.err = Some(CorruptInputError(self.roffset))
+    self.err = Some(corrupt_input_error(self.roffset))
     return
   }
 
   // No check on length; encoding can be prescient.
   if dist > self.dict.hist_size() {
-    self.err = Some(CorruptInputError(self.roffset))
+    self.err = Some(corrupt_input_error(self.roffset))
     return
   }
   self.copy_len = length
@@ -643,7 +648,7 @@ fn data_block(self : Decompressor) -> Unit {
   self.b = 0
 
   // Length then ones-complement of length.
-  let (nr, err) = self.r.read_full(self.buf[0:4])
+  let (nr, err) = @io.read_full(self.r, Slice::new(self.buf)[0:4])
   self.roffset += nr.to_int64()
   match err {
     Some(err) => {
@@ -655,7 +660,7 @@ fn data_block(self : Decompressor) -> Unit {
   let n = self.buf[0].to_int() | (self.buf[1].to_int() << 8)
   let nn = self.buf[2].to_int() | (self.buf[3].to_int() << 8)
   if (nn & 0xffff) != (n.lnot() & 0xffff) {
-    self.err = Some(CorruptInputError(self.roffset))
+    self.err = Some(corrupt_input_error(self.roffset))
     return
   }
   if n == 0 {
@@ -674,7 +679,7 @@ fn copy_data(self : Decompressor) -> Unit {
   if buf.length() > self.copy_len {
     buf = buf[:self.copy_len]
   }
-  let (cnt, err) = self.r.read_full(buf.as_array_view())
+  let (cnt, err) = @io.read_full(self.r, buf)
   self.roffset += cnt.to_int64()
   self.copy_len -= cnt
   self.dict.write_mark(cnt)
@@ -700,24 +705,24 @@ fn finish_block(self : Decompressor) -> Unit {
     if self.dict.avail_read() > 0 {
       self.to_read = self.dict.read_flush()
     }
-    self.err = Some(IOEOF)
+    self.err = Some(ioeof)
   }
   self.step = next_block
 }
 
-/// no_eof returns err, unless err == IOEOF, in which case it returns IOErrUnexpectedEOF.
-fn no_eof(e : Error) -> Error {
-  match e {
-    IOEOF => return IOErrUnexpectedEOF
-    _ => e
+/// no_eof returns err, unless err == ioeof, in which case it returns @io.err_unexpected_eof.
+fn no_eof(e : IOError) -> IOError {
+  if e == ioeof {
+    return @io.err_unexpected_eof
   }
+  e
 }
 
-fn more_bits(self : Decompressor) -> Error? {
-  let c = try {
-    self.r.read_byte!()
-  } catch {
-    err => return Some(err)
+fn more_bits(self : Decompressor) -> IOError? {
+  let (c, err) = self.r.read_byte()
+  match err {
+    Some(_) => return err
+    _ => ()
   }
   self.roffset += 1
   self.b = self.b | (c.to_uint() << self.nb.reinterpret_as_int())
@@ -726,7 +731,7 @@ fn more_bits(self : Decompressor) -> Error? {
 }
 
 /// Read the next Huffman-encoded symbol from f according to h.
-fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, Error?) {
+fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
   // Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // with single element, huff_sym must error on these two edge cases. In both
   // cases, the chunks slice will be 0 for the invalid sequence, leading it
@@ -739,14 +744,14 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, Error?) {
   let mut b = self.b
   for {
     while nb < n {
-      let c = try {
-        self.r.read_byte!()
-      } catch {
-        err => {
+      let (c, err) = self.r.read_byte()
+      match err {
+        Some(e) => {
           self.b = b
           self.nb = nb
-          return (0, Some(no_eof(err)))
+          return (0, Some(no_eof(e)))
         }
+        _ => ()
       }
       self.roffset += 1
       b = b | (c.to_uint() << (nb & 31).reinterpret_as_int())
@@ -765,7 +770,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, Error?) {
       if n == 0 {
         self.b = b
         self.nb = nb
-        self.err = Some(CorruptInputError(self.roffset))
+        self.err = Some(corrupt_input_error(self.roffset))
         return (0, self.err)
       }
       self.b = b >> (n & 31).reinterpret_as_int()
@@ -776,11 +781,11 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, Error?) {
   }
 }
 
-fn make_reader(self : Decompressor, r : IOReader) -> Unit {
+fn make_reader(self : Decompressor, r : Reader) -> Unit {
   self.r = r
 }
 
-fn reset(self : Decompressor, r : IOReader, dict : Slice[Byte]) -> Unit {
+fn reset(self : Decompressor, r : Reader, dict : Slice[Byte]) -> Unit {
   self.r = r
   self.roffset = 0
   self.b = 0

@@ -20,10 +20,10 @@ struct Compressor {
   mut tokens : Array[Token]
 
   // deflate state
-  mut err : Error?
+  mut err : IOError?
 }
 
-fn Compressor::new(buf : IOWriter) -> Compressor {
+fn Compressor::new(buf : @io.Writer) -> Compressor {
   let w = HuffmanBitWriter::new(buf)
   {
     w,
@@ -36,34 +36,37 @@ fn Compressor::new(buf : IOWriter) -> Compressor {
   }
 }
 
-type! WriterClosedError  derive(Show)
+pub let writer_closed_error : @io.IOError = @io.IOError("writer closed")
 
-fn close(self : Compressor) -> Unit!Error {
+fn close(self : Compressor) -> IOError? {
+  if Some(writer_closed_error) == self.err {
+    return None
+  }
   match self.err {
-    Some(WriterClosedError) => return
-    Some(err) => raise err
+    Some(_) => return self.err
     _ => ()
   }
   self.sync = true
   self.enc_speed()
   match self.err {
-    Some(err) => raise err
+    Some(_) => return self.err
     _ => ()
   }
   self.w.write_stored_header(0, true)
   match self.w.err {
-    Some(err) => raise err
+    Some(_) => return self.w.err
     _ => ()
   }
   self.w.flush()
   match self.w.err {
-    Some(err) => raise err
+    Some(_) => return self.w.err
     _ => ()
   }
-  self.err = Some(WriterClosedError)
+  self.err = Some(writer_closed_error)
+  None
 }
 
-fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> Error? {
+fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> IOError? {
   self.w.write_stored_header(buf.length(), false)
   if not(self.w.err.is_empty()) {
     return self.w.err
@@ -124,7 +127,7 @@ fn enc_speed(self : Compressor) -> Unit {
   self.window_end = 0
 }
 
-fn write(self : Compressor, b : Slice[Byte]) -> (Int, Error?) {
+fn write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
   if not(self.err.is_empty()) {
     return (0, self.err)
   }

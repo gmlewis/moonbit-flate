@@ -1,6 +1,10 @@
 {
+  "import": [
+    "gmlewis/io"
+  ],
   "wbtest-import": [
     "gmlewis/flate/decoder",
-    "gmlewis/flate/encoder"
+    "gmlewis/flate/encoder",
+    "gmlewis/io"
   ]
 }
