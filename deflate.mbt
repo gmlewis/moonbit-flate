@@ -38,29 +38,32 @@ fn Compressor::new(buf : @io.Writer) -> Compressor {
 
 pub let writer_closed_error : @io.IOError = @io.IOError("writer closed")
 
-fn close(self : Compressor) -> Unit!IOError {
+fn close(self : Compressor) -> IOError? {
+  if Some(writer_closed_error) == self.err {
+    return None
+  }
   match self.err {
-    Some(writer_closed_error) => return
-    Some(err) => raise err
+    Some(_) => return self.err
     _ => ()
   }
   self.sync = true
   self.enc_speed()
   match self.err {
-    Some(err) => raise err
+    Some(_) => return self.err
     _ => ()
   }
   self.w.write_stored_header(0, true)
   match self.w.err {
-    Some(err) => raise err
+    Some(_) => return self.w.err
     _ => ()
   }
   self.w.flush()
   match self.w.err {
-    Some(err) => raise err
+    Some(_) => return self.w.err
     _ => ()
   }
   self.err = Some(writer_closed_error)
+  None
 }
 
 fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> IOError? {

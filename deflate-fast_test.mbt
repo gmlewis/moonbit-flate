@@ -54,7 +54,7 @@ test "TestBestSpeed" {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
         want.write_bytes(subset)
-        let (_, err) = w.write(subset.to_array()[:])
+        let (_, err) = w.write(@io.Slice::new(subset.to_array()))
         match err {
           Some(_) => abort("error: \{err}")
           _ => ()
@@ -65,10 +65,10 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      w.close!()
+      assert_eq!(None, w.close())
 
       //
-      let r : @io.ReadCloser = @flate.Reader::new(Reader::from_buffer(buf))
+      let r : @io.ReadCloser = @flate.Reader::new(@io.Reader::from_buffer(buf))
       let got = r.to_bytes!()
       try {
         assert_eq!(got, want)

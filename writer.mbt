@@ -13,7 +13,7 @@ pub fn Writer::new(buf : @io.Writer) -> Writer {
 }
 
 /// `write` writes the provided data to the flate Writer.
-pub fn write(self : Writer, data : ArrayView[Byte]) -> (Int, IOError?) {
+pub fn write(self : Writer, data : Slice[Byte]) -> (Int, IOError?) {
   let data = Array::from_iter(data.iter()) // unfortunate copy
   self.d.write(Slice::new(data))
 }
@@ -21,6 +21,6 @@ pub fn write(self : Writer, data : ArrayView[Byte]) -> (Int, IOError?) {
 /// `close` closes the input to the flate Writer.
 /// After closing the Writer, the compressed data can be read
 /// from the `@io.Writer` provided to `new`.
-pub fn close(self : Writer) -> Unit!IOError {
-  self.d.close!()
+pub fn close(self : Writer) -> IOError? {
+  self.d.close()
 }

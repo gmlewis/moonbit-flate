@@ -15,12 +15,6 @@ typealias IOError = @io.IOError
 
 pub let ioeof : IOError = @io.eof
 
-/// `Reader::new` returns a new [@io.ReadCloser] that can be used
-/// to read the uncompressed version of r.
-pub fn Reader::new(r : Reader) -> Decompressor {
-  Decompressor::new(r)
-}
-
 let max_code_len = 16 // max length of Huffman code
 // The next three numbers come from the RFC section 3.2.7, with the
 // additional proviso in section 3.2.5 which implies that distance codes
@@ -209,12 +203,18 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   true
 }
 
-// The actual read interface needed by [Decompressor::new].
+/// The actual read interface needed by [Decompressor::new].
 pub trait Reader {
   // @io.Reader
   read(Self, Slice[Byte]) -> (Int, IOError?)
   // @io.ByteReader
   read_byte(Self) -> (Byte, IOError?)
+}
+
+/// `Reader::new` returns a new [@io.ReadCloser] that can be used
+/// to read the uncompressed version of r.
+pub fn Reader::new(r : Reader) -> Decompressor {
+  Decompressor::new(r)
 }
 
 // Decompress state.
@@ -322,7 +322,7 @@ fn next_block(self : Decompressor) -> Unit {
   }
 }
 
-fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
+pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -343,22 +343,17 @@ fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
       _ => ()
     }
     (self.step._)(self)
-    match self.err {
-      Some(ioeof) =>
-        if self.to_read.length() == 0 {
-          self.to_read = self.dict.read_flush() // Flush what's left in case of error
-        }
-      _ => ()
+    if Some(ioeof) == self.err && self.to_read.length() == 0 {
+      self.to_read = self.dict.read_flush() // Flush what's left in case of error
     }
   }
 }
 
-fn close(self : Decompressor) -> Unit!IOError {
-  match self.err {
-    Some(ioeof) => return
-    Some(err) => raise err
-    _ => return
+pub fn close(self : Decompressor) -> IOError? {
+  if Some(ioeof) == self.err {
+    return None
   }
+  self.err
 }
 
 // RFC 1951 section 3.2.7.
@@ -717,10 +712,10 @@ fn finish_block(self : Decompressor) -> Unit {
 
 /// no_eof returns err, unless err == ioeof, in which case it returns @io.err_unexpected_eof.
 fn no_eof(e : IOError) -> IOError {
-  match e {
-    ioeof => return @io.err_unexpected_eof
-    _ => e
+  if e == ioeof {
+    return @io.err_unexpected_eof
   }
+  e
 }
 
 fn more_bits(self : Decompressor) -> IOError? {
@@ -756,6 +751,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
           self.nb = nb
           return (0, Some(no_eof(e)))
         }
+        _ => ()
       }
       self.roffset += 1
       b = b | (c.to_uint() << (nb & 31).reinterpret_as_int())
