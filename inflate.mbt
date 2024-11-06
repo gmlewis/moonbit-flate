@@ -343,7 +343,7 @@ pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
       _ => ()
     }
     (self.step._)(self)
-    if Some(ioeof) == self.err && self.to_read.length() == 0 {
+    if None != self.err && self.to_read.length() == 0 {
       self.to_read = self.dict.read_flush() // Flush what's left in case of error
     }
   }
