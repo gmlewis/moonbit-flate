@@ -47,18 +47,14 @@ test "TestBestSpeed" {
     for first_n in [1, 65534, 65535, 65536, 65537, 131072] {
       i += 1
       tc[0] = first_n
-      let buf = @buffer.new()
-      let want = @buffer.new()
-      let w : @io.WriteCloser = @flate.Writer::new(@io.Writer::from_buffer(buf))
+      let buf = @io.Buffer::new()
+      let want = @io.Buffer::new()
+      let w : @io.WriteCloser = @flate.Writer::new(buf)
       for n in tc {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
-        want.write_bytes(subset)
-        let (_, err) = w.write(@io.Slice::new(subset.to_array()))
-        match err {
-          Some(_) => abort("error: \{err}")
-          _ => ()
-        }
+        guard let (_, None) = want.write_bytes(subset)
+        guard let (_, None) = w.write(@io.Slice::new(subset.to_array()))
         // if not(flush) {
         // continue
         // }
@@ -68,9 +64,11 @@ test "TestBestSpeed" {
       assert_eq!(None, w.close())
 
       //
-      let r : @io.ReadCloser = @flate.Reader::new(@io.Reader::from_buffer(buf))
-      let got = r.to_bytes!()
+      let got = @io.Slice::new([])
+      let r : @io.ReadCloser = @flate.Reader::new(buf)
+      guard let (_, None) = r.read(got)
       try {
+        let got = got.to_bytes()
         assert_eq!(got, want)
       } catch {
         _ => abort("test #\{i} FAILED")
