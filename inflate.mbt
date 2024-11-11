@@ -204,7 +204,7 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
 }
 
 /// The actual read interface needed by [Decompressor::new].
-pub trait Reader {
+pub(open) trait Reader {
   // @io.Reader
   read(Self, Slice[Byte]) -> (Int, IOError?)
   // @io.ByteReader
