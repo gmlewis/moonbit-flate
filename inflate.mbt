@@ -211,12 +211,6 @@ pub trait Reader {
   read_byte(Self) -> (Byte, IOError?)
 }
 
-/// `Reader::new` returns a new [@io.ReadCloser] that can be used
-/// to read the uncompressed version of r.
-pub fn Reader::new(r : Reader) -> Decompressor {
-  Decompressor::new(r)
-}
-
 // Decompress state.
 struct Decompressor {
   // Input source.
@@ -261,7 +255,22 @@ enum StepState {
 
 type StepFunc (Decompressor) -> Unit
 
-fn Decompressor::new(r : Reader) -> Decompressor {
+/// `Reader::new` returns a new [@io.ReadCloser] that can be used
+/// to read the uncompressed version of r.
+pub fn Reader::new(r : Reader) -> Decompressor {
+  Decompressor::new(r, Slice::new([]))
+}
+
+/// `Reader::new_dict` is like [NewReader] but initializes the reader
+/// with a preset dictionary. The returned [Reader] behaves as if
+/// the uncompressed data stream started with the given dictionary,
+/// which has already been read. NewReaderDict is typically used
+/// to read data compressed by NewWriterDict.
+pub fn Reader::new_dict(r : Reader, dict : Slice[Byte]) -> Decompressor {
+  Decompressor::new(r, dict)
+}
+
+fn Decompressor::new(r : Reader, dict : Slice[Byte]) -> Decompressor {
   {
     r,
     roffset: 0,
@@ -271,7 +280,7 @@ fn Decompressor::new(r : Reader) -> Decompressor {
     h2: HuffmanDecoder::new(),
     bits: Array::make(max_num_lit + max_num_dist, 0),
     codebits: Array::make(num_codes, 0),
-    dict: DictDecoder::new(max_match_offset, Slice::new([])),
+    dict: DictDecoder::new(max_match_offset, dict),
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
     step: next_block,
     step_state: StateInit,
