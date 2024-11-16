@@ -19,7 +19,7 @@ test "writer dict" {
   // b.reset()
   guard let (17, None) = w.write(text)
   guard let None = w.close()
-  let want = b.to_bytes()
+  let want = b.to_bytes().to_array()
   assert_eq!(38, want.length())
 
   //
@@ -29,7 +29,7 @@ test "writer dict" {
   guard let None = w.close()
 
   //
-  let got = b1.to_bytes()
+  let got = b1.to_bytes().to_array()
   assert_eq!(38, got.length())
   if got != want {
     raise TestError("writer wrote \{got} want \{want}")
