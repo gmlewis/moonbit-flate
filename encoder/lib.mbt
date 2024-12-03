@@ -1,6 +1,7 @@
 // Copyright 2024 peter-jerry-ye
 // SPDX-License-Identifier: MIT
 
+///|
 pub fn utf8(string : Iter[Char]) -> Iter[Byte] {
   Iter::new(
     fn(f) {

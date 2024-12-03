@@ -6,31 +6,39 @@
 // license that can be found in the LICENSE file.
 
 // The largest offset code.
+///|
 let offset_code_count = 30
 
 // The special code used to mark the end of a block.
+///|
 let end_block_marker = 256
 
 // The first length code.
+///|
 let length_codes_start = 257
 
 // The number of codegen codes.
+///|
 let codegen_code_count = 19
 
+///|
 let bad_code = b'\xff'
 
 // buffer_flush_size indicates the buffer size
 // after which bytes are flushed to the writer.
 // Should preferably be a multiple of 6, since
 // we accumulate 6 bytes between writes to the buffer.
+///|
 let buffer_flush_size = 240
 
 // buffer_size is the actual output byte buffer size.
 // It must have additional headroom for a flush
 // which can contain up to 8 bytes.
+///|
 let buffer_size : Int = buffer_flush_size + 8
 
 // The number of extra bits needed by length code X - LENGTH_CODES_START.
+///|
 let length_extra_bits : Array[Int] = [
   0, 0, 0, // /* 257 */
    0, 0, 0, 0, 0, 1, 1, 1, 1, 2, // /* 260 */
@@ -39,17 +47,20 @@ let length_extra_bits : Array[Int] = [
 ]
 
 // The length indicated by length code X - LENGTH_CODES_START.
+///|
 let length_base : Array[UInt] = [
   0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80,
   96, 112, 128, 160, 192, 224, 255,
 ]
 
 // offset code word extra bits.
+///|
 let offset_extra_bits : Array[Int] = [
   0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
   12, 12, 13, 13,
 ]
 
+///|
 let offset_base : Array[UInt] = [
   0x000000, 0x000001, 0x000002, 0x000003, 0x000004, 0x000006, 0x000008, 0x00000c,
   0x000010, 0x000018, 0x000020, 0x000030, 0x000040, 0x000060, 0x000080, 0x0000c0,
@@ -58,10 +69,12 @@ let offset_base : Array[UInt] = [
 ]
 
 // The odd order in which the codegen code sizes are written.
+///|
 let codegen_order : Array[Int] = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
+///|
 struct HuffmanBitWriter {
   // writer is the underlying writer.
   // Do not use it directly; use the write method, which ensures
@@ -85,6 +98,7 @@ struct HuffmanBitWriter {
   mut err : IOError?
 }
 
+///|
 fn HuffmanBitWriter::new(writer : @io.Writer) -> HuffmanBitWriter {
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
@@ -111,6 +125,7 @@ fn HuffmanBitWriter::new(writer : @io.Writer) -> HuffmanBitWriter {
   }
 }
 
+///|
 fn flush(self : HuffmanBitWriter) -> Unit {
   if not(self.err.is_empty()) {
     self.nbits = 0
@@ -132,6 +147,7 @@ fn flush(self : HuffmanBitWriter) -> Unit {
   self.nbytes = 0
 }
 
+///|
 fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -140,6 +156,7 @@ fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
   self.err = err
 }
 
+///|
 fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -148,6 +165,7 @@ fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
   self.err = err
 }
 
+///|
 fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -175,6 +193,7 @@ fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
   }
 }
 
+///|
 fn write_bytes(self : HuffmanBitWriter, bytes : Slice[Byte]) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -209,6 +228,7 @@ fn write_bytes(self : HuffmanBitWriter, bytes : Slice[Byte]) -> Unit {
 //	num_literals      The number of literals in literal_encoding
 //	num_offsets       The number of offsets in offset_encoding
 //	litenc, offenc    The literal and offset encoder to use
+///|
 fn generate_codegen(
   self : HuffmanBitWriter,
   num_literals : Int,
@@ -301,6 +321,7 @@ fn generate_codegen(
 }
 
 // dynamic_size returns the size of dynamically encoded data in bits.
+///|
 fn dynamic_size(
   self : HuffmanBitWriter,
   lit_enc : HuffmanEncoder,
@@ -329,6 +350,7 @@ fn dynamic_size(
 }
 
 // fixed_size returns the size of dynamically encoded data in bits.
+///|
 fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
   3 +
   fixed_literal_encoding.bit_length(Slice::new(self.literal_freq)) +
@@ -339,6 +361,7 @@ fn fixed_size(self : HuffmanBitWriter, extra_bits : Int) -> Int {
 // stored_size calculates the stored size, including header.
 // The function returns the size in bits and whether the block
 // fits inside a single block.
+///|
 fn stored_size(inp_length : Int) -> (Int, Bool) {
   if inp_length == 0 {
     return (0, false)
@@ -350,6 +373,7 @@ fn stored_size(inp_length : Int) -> (Int, Bool) {
   (0, false)
 }
 
+///|
 fn write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -384,6 +408,7 @@ fn write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
 //	num_literals  The number of literals specified in codegen
 //	num_offsets   The number of offsets specified in codegen
 //	num_codegens  The number of codegens used in codegen
+///|
 fn write_dynamic_header(
   self : HuffmanBitWriter,
   num_literals : Int,
@@ -436,6 +461,7 @@ fn write_dynamic_header(
   }
 }
 
+///|
 fn write_stored_header(
   self : HuffmanBitWriter,
   length : Int,
@@ -456,6 +482,7 @@ fn write_stored_header(
 // histogram distribution.
 // If input is supplied and the compression savings are below 1/16th of the
 // input size the block is stored.
+///|
 fn write_block_dynamic(
   self : HuffmanBitWriter,
   tokens : Array[Token],
@@ -508,6 +535,7 @@ fn write_block_dynamic(
 // literal_freq and offset_freq, and generates literal_encoding
 // and offset_encoding.
 // The number of literal and offset tokens is returned.
+///|
 fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
   for i in 0..<self.literal_freq.length() {
     self.literal_freq[i] = 0
@@ -552,6 +580,7 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
 
 // write_tokens writes a slice of tokens to the output.
 // codes for literal and offset encoding must be supplied.
+///|
 fn write_tokens(
   self : HuffmanBitWriter,
   tokens : Array[Token],
@@ -590,6 +619,7 @@ fn write_tokens(
 // write_block_huff encodes a block of bytes as either
 // Huffman encoded literals or uncompressed bytes if the
 // results only gains very little from compression.
+///|
 fn write_block_huff(
   self : HuffmanBitWriter,
   eof : Bool,
@@ -666,7 +696,7 @@ fn write_block_huff(
     }
     self.write(Slice::new(self.bytes)[:n])
     if not(self.err.is_empty()) {
-      return  // Return early in the event of write failures
+      return // Return early in the event of write failures
     }
     n = 0
   }
@@ -677,6 +707,7 @@ fn write_block_huff(
 // histogram accumulates a histogram of b in h.
 //
 // len(h) must be >= 256, and h's elements must be all zeroes.
+///|
 fn histogram(b : Slice[Byte], h : Array[Int]) -> Unit {
   for i in 0..<b.length() {
     let t = b[i].to_int()

@@ -1,3 +1,4 @@
+///|
 fn partition[T](
   a : Slice[T],
   first : Int,
@@ -25,6 +26,7 @@ fn partition[T](
   return right
 }
 
+///|
 fn quicksort_helper[T](
   a : Slice[T],
   first : Int,
@@ -39,10 +41,12 @@ fn quicksort_helper[T](
   quicksort_helper(a, pivot_index + 1, last, less)
 }
 
+///|
 fn quicksort[T](a : Slice[T], less : (T, T) -> Bool) -> Unit {
   quicksort_helper(a, 0, a.length() - 1, less)
 }
 
+///|
 fn minimum(x : Int, y : Int) -> Int {
   if x > y {
     y

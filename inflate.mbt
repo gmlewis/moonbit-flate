@@ -9,29 +9,36 @@
 // RFC 1951.  The gzip and zlib packages implement access to DEFLATE-based file
 // formats.
 
+///|
 typealias Slice[T] = @io.Slice[T]
 
+///|
 typealias IOError = @io.IOError
 
+///|
 pub let ioeof : IOError = @io.eof
 
+///|
 let max_code_len = 16 // max length of Huffman code
 // The next three numbers come from the RFC section 3.2.7, with the
 // additional proviso in section 3.2.5 which implies that distance codes
 // 30 and 31 should never occur in compressed data.
 
+///|
 let max_num_lit = 286
 
+///|
 let max_num_dist = 30
 
+///|
 let num_codes = 19 // number of codes in Huffman meta-code
 
-/// A corrupt_input_error reports the presence of corrupt input at a given offset.
+///| A corrupt_input_error reports the presence of corrupt input at a given offset.
 fn corrupt_input_error(v : Int64) -> IOError {
   IOError("flate: corrupt input before offset \{v}")
 }
 
-/// An internal_error reports an error in the flate code itself.
+///| An internal_error reports an error in the flate code itself.
 fn internal_error(s : String) -> IOError {
   IOError("flate: internal error: \{s}")
 }
@@ -56,14 +63,19 @@ fn internal_error(s : String) -> IOError {
 // chunk & 15 is number of bits
 // chunk >> 4 is value, including table link
 
+///|
 let huffman_chunk_bits = 9
 
+///|
 let huffman_num_chunks : UInt = 1U << huffman_chunk_bits
 
+///|
 let huffman_count_mask = 15U
 
+///|
 let huffman_value_shift = 4
 
+///|
 struct HuffmanDecoder {
   mut min : Int // the minimum code length
   mut chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
@@ -71,12 +83,13 @@ struct HuffmanDecoder {
   mut link_mask : UInt // mask the width of the link table
 }
 
+///|
 fn HuffmanDecoder::new() -> HuffmanDecoder {
   let chunks = Array::make(huffman_num_chunks.reinterpret_as_int(), 0U)
   { min: 0, chunks, links: [], link_mask: 0 }
 }
 
-/// Initialize Huffman decoding tables from array of code lengths.
+///| Initialize Huffman decoding tables from array of code lengths.
 /// Following this function, h is guaranteed to be initialized into a complete
 /// tree (i.e., neither over-subscribed nor under-subscribed). The exception is a
 /// degenerate case where the tree has only a single symbol with length 1. Empty
@@ -203,7 +216,7 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   true
 }
 
-/// The actual read interface needed by [Decompressor::new].
+///| The actual read interface needed by [Decompressor::new].
 pub(open) trait Reader {
   // @io.Reader
   read(Self, Slice[Byte]) -> (Int, IOError?)
@@ -212,6 +225,7 @@ pub(open) trait Reader {
 }
 
 // Decompress state.
+///|
 struct Decompressor {
   // Input source.
   mut r : Reader
@@ -239,7 +253,7 @@ struct Decompressor {
   // and decompression state.
   mut step : StepFunc
   mut step_state : StepState
-  mut final : Bool
+  mut final_flag : Bool
   mut err : IOError?
   mut to_read : Slice[Byte] // []byte
   mut hl : HuffmanDecoder?
@@ -248,20 +262,22 @@ struct Decompressor {
   mut copy_dist : Int
 }
 
+///|
 enum StepState {
   StateInit
   StateDict
 }
 
+///|
 type StepFunc (Decompressor) -> Unit
 
-/// `Reader::new` returns a new [@io.ReadCloser] that can be used
+///| `Reader::new` returns a new [@io.ReadCloser] that can be used
 /// to read the uncompressed version of r.
 pub fn Reader::new(r : Reader) -> Decompressor {
   Decompressor::new(r, Slice::new([]))
 }
 
-/// `Reader::new_dict` is like [NewReader] but initializes the reader
+///| `Reader::new_dict` is like [NewReader] but initializes the reader
 /// with a preset dictionary. The returned [Reader] behaves as if
 /// the uncompressed data stream started with the given dictionary,
 /// which has already been read. NewReaderDict is typically used
@@ -270,6 +286,7 @@ pub fn Reader::new_dict(r : Reader, dict : Slice[Byte]) -> Decompressor {
   Decompressor::new(r, dict)
 }
 
+///|
 fn Decompressor::new(r : Reader, dict : Slice[Byte]) -> Decompressor {
   {
     r,
@@ -284,7 +301,7 @@ fn Decompressor::new(r : Reader, dict : Slice[Byte]) -> Decompressor {
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
     step: next_block,
     step_state: StateInit,
-    final: false,
+    final_flag: false,
     err: None,
     to_read: Slice::new([]),
     hl: None,
@@ -294,13 +311,14 @@ fn Decompressor::new(r : Reader, dict : Slice[Byte]) -> Decompressor {
   }
 }
 
+///|
 fn next_block(self : Decompressor) -> Unit {
   while self.nb < 1U + 2 {
     self.err = self.more_bits()
-    guard let None = self.err else { _ => return  }
+    guard let None = self.err else { _ => return }
 
   }
-  self.final = (self.b & 1) == 1
+  self.final_flag = (self.b & 1) == 1
   self.b = self.b >> 1
   let typ = self.b & 3
   self.b = self.b >> 2
@@ -331,6 +349,7 @@ fn next_block(self : Decompressor) -> Unit {
   }
 }
 
+///|
 pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
   for {
     if self.to_read.length() > 0 {
@@ -358,6 +377,7 @@ pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
   }
 }
 
+///|
 pub fn close(self : Decompressor) -> IOError? {
   if Some(ioeof) == self.err {
     return None
@@ -368,10 +388,12 @@ pub fn close(self : Decompressor) -> IOError? {
 // RFC 1951 section 3.2.7.
 // Compression with dynamic Huffman codes
 
+///|
 let code_order = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
+///|
 fn read_huffman(self : Decompressor) -> IOError? {
   // HLIT[5], HDIST[5], HCLEN[4].
   while self.nb < 5U + 5 + 4 {
@@ -493,7 +515,7 @@ fn read_huffman(self : Decompressor) -> IOError? {
   None
 }
 
-/// Decode a single Huffman block.
+///| Decode a single Huffman block.
 /// hl and hd are the Huffman states for the lit/length values
 /// and the distance values, respectively. If hd == nil, using the
 /// fixed distance encoding associated with fixed Huffman blocks.
@@ -504,7 +526,7 @@ fn huffman_block(self : Decompressor) -> Unit {
   }
 }
 
-/// read_literal:
+///| read_literal:
 /// Read literal and/or (length, distance) according to RFC section 3.2.3.
 fn read_literal(self : Decompressor) -> Unit {
   let (v, err) = self.huff_sym(self.hl.unwrap())
@@ -562,7 +584,7 @@ fn read_literal(self : Decompressor) -> Unit {
   if n > 0 {
     while self.nb < n {
       self.err = self.more_bits()
-      guard let None = self.err else { _ => return  }
+      guard let None = self.err else { _ => return }
 
     }
     let mask = (1U << n.reinterpret_as_int()) - 1
@@ -577,7 +599,7 @@ fn read_literal(self : Decompressor) -> Unit {
     None => {
       while self.nb < 5 {
         self.err = self.more_bits()
-        guard let None = self.err else { _ => return  }
+        guard let None = self.err else { _ => return }
 
       }
       let to_rev = ((self.b & 0x1F) << 3).to_byte()
@@ -607,7 +629,7 @@ fn read_literal(self : Decompressor) -> Unit {
     let mut extra = (dist & 1) << nb.reinterpret_as_int()
     while self.nb < nb {
       self.err = self.more_bits()
-      guard let None = self.err else { _ => return  }
+      guard let None = self.err else { _ => return }
 
     }
     let mask = (1U << nb.reinterpret_as_int()) - 1
@@ -630,7 +652,7 @@ fn read_literal(self : Decompressor) -> Unit {
   self.copy_history()
 }
 
-/// copy_history:
+///| copy_history:
 /// Perform a backwards copy according to RFC section 3.2.3.
 fn copy_history(self : Decompressor) -> Unit {
   let mut cnt = self.dict.try_write_copy(self.copy_dist, self.copy_len)
@@ -649,7 +671,7 @@ fn copy_history(self : Decompressor) -> Unit {
   self.read_literal()
 }
 
-/// Copy a single uncompressed data block from input to output.
+///| Copy a single uncompressed data block from input to output.
 fn data_block(self : Decompressor) -> Unit {
   // Uncompressed.
   // Discard current half-byte.
@@ -681,7 +703,7 @@ fn data_block(self : Decompressor) -> Unit {
   self.copy_data()
 }
 
-/// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
+///| copy_data copies f.copy_len bytes from the underlying reader into f.hist.
 /// It pauses for reads when f.hist is full.
 fn copy_data(self : Decompressor) -> Unit {
   let mut buf = self.dict.write_slice()
@@ -709,8 +731,9 @@ fn copy_data(self : Decompressor) -> Unit {
   self.finish_block()
 }
 
+///|
 fn finish_block(self : Decompressor) -> Unit {
-  if self.final {
+  if self.final_flag {
     if self.dict.avail_read() > 0 {
       self.to_read = self.dict.read_flush()
     }
@@ -719,7 +742,7 @@ fn finish_block(self : Decompressor) -> Unit {
   self.step = next_block
 }
 
-/// no_eof returns err, unless err == ioeof, in which case it returns @io.err_unexpected_eof.
+///| no_eof returns err, unless err == ioeof, in which case it returns @io.err_unexpected_eof.
 fn no_eof(e : IOError) -> IOError {
   if e == ioeof {
     return @io.err_unexpected_eof
@@ -727,6 +750,7 @@ fn no_eof(e : IOError) -> IOError {
   e
 }
 
+///|
 fn more_bits(self : Decompressor) -> IOError? {
   let (c, err) = self.r.read_byte()
   match err {
@@ -739,7 +763,7 @@ fn more_bits(self : Decompressor) -> IOError? {
   None
 }
 
-/// Read the next Huffman-encoded symbol from f according to h.
+///| Read the next Huffman-encoded symbol from f according to h.
 fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
   // Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // with single element, huff_sym must error on these two edge cases. In both
@@ -790,10 +814,12 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
   }
 }
 
+///|
 fn make_reader(self : Decompressor, r : Reader) -> Unit {
   self.r = r
 }
 
+///|
 fn reset(self : Decompressor, r : Reader, dict : Slice[Byte]) -> Unit {
   self.r = r
   self.roffset = 0
@@ -804,7 +830,7 @@ fn reset(self : Decompressor, r : Reader, dict : Slice[Byte]) -> Unit {
   self.dict = DictDecoder::new(max_match_offset, dict)
   self.step = next_block
   self.step_state = StateInit
-  self.final = false
+  self.final_flag = false
   self.err = None
   self.to_read = Slice::new([])
   self.hl = None
@@ -813,6 +839,7 @@ fn reset(self : Decompressor, r : Reader, dict : Slice[Byte]) -> Unit {
   self.copy_dist = 0
 }
 
+///|
 let fixed_huffman_decoder : HuffmanDecoder = {
   min: 7,
   chunks: [

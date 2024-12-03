@@ -5,16 +5,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+///|
 const LOG_WINDOW_SIZE = 15
 
+///|
 let window_size : Int = 1 << LOG_WINDOW_SIZE
 
+///|
 let window_mask : Int = window_size - 1
 
 // The smallest match length that the compressor actually emits
+///|
 const MIN_MATCH_LENGTH = 4
 
 // The largest match length
+///|
 const MAX_MATCH_LENGTH = 258
 
 // The maximum number of tokens we put into a single flate block, just to
@@ -24,14 +29,18 @@ const MAX_MATCH_LENGTH = 258
 
 // const MAX_STORE_BLOCK_SIZE = 65535
 
+///|
 const HASH_BITS = 17 // After 17 performance degrades
 
+///|
 let hash_size : Int = 1 << HASH_BITS
 
+///|
 let hash_mask : UInt = (1U << HASH_BITS) - 1
 
 // let max_hash_offset : Int = 1 << 24
 
+///|
 struct Compressor {
   w : HuffmanBitWriter
 
@@ -66,6 +75,7 @@ struct Compressor {
   hash_match : Slice[UInt] //  [maxMatchLength - 1]uint32
 }
 
+///|
 fn Compressor::new(buf : @io.Writer) -> Compressor {
   let w = HuffmanBitWriter::new(buf)
   {
@@ -91,6 +101,7 @@ fn Compressor::new(buf : @io.Writer) -> Compressor {
 // dictionary and calculate all hashes.
 // This is much faster than doing a full encode.
 // Should only be used after a reset.
+///|
 fn fill_window(self : Compressor, b : Slice[Byte]) -> Unit {
   // if self.index != 0 || self.window_end != 0 {
   if self.window_end != 0 {
@@ -136,8 +147,10 @@ fn fill_window(self : Compressor, b : Slice[Byte]) -> Unit {
   // self.index = n
 }
 
+///|
 pub let writer_closed_error : @io.IOError = @io.IOError("writer closed")
 
+///|
 fn close(self : Compressor) -> IOError? {
   if Some(writer_closed_error) == self.err {
     return None
@@ -166,6 +179,7 @@ fn close(self : Compressor) -> IOError? {
   None
 }
 
+///|
 fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> IOError? {
   self.w.write_stored_header(buf.length(), false)
   if not(self.w.err.is_empty()) {
@@ -175,10 +189,12 @@ fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> IOError? {
   return self.w.err
 }
 
+///|
 const HASHMUL = 0x1e35a7bdU
 
 // bulk_hash4 will compute hashes using the same
 // algorithm as hash4.
+///|
 fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt]) -> Unit {
   if b.length() < MIN_MATCH_LENGTH {
     return
@@ -195,6 +211,7 @@ fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt]) -> Unit {
   }
 }
 
+///|
 fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
   let n = minimum(self.window.length() - self.window_end, b.length())
   for i in 0..<n {
@@ -207,6 +224,7 @@ fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 // encSpeed will compress and store the currently added data,
 // if enough has been accumulated or we at the end of the stream.
 // Any error that occurred will be in self.err
+///|
 fn enc_speed(self : Compressor) -> Unit {
   // We only compress if we have max_store_block_size.
   if self.window_end < max_store_block_size {
@@ -247,6 +265,7 @@ fn enc_speed(self : Compressor) -> Unit {
   self.window_end = 0
 }
 
+///|
 fn write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
   if not(self.err.is_empty()) {
     return (0, self.err)

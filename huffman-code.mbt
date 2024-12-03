@@ -5,12 +5,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+///|
 struct HuffmanEncoder {
   codes : Array[HCode]
   mut freqcache : Array[LiteralNode]
   bit_count : Array[Int] // [17]Int
 } derive(Show, Eq)
 
+///|
 fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
   let codes = Array::make(size, { code: 0U, len: 0U })
   // Is this a MoonBit bug? Need to make unique arrays or else they will
@@ -23,18 +25,21 @@ fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
   { codes, freqcache, bit_count }
 }
 
+///|
 struct LiteralNode {
   literal : UInt // uint16
   freq : Int
 } derive(Show, Eq)
 
 // HCode is a huffman code with a bit code and bit length.
+///|
 struct HCode {
   mut code : UInt
   mut len : UInt
 } derive(Show, Eq)
 
 // A levelInfo describes the state of the constructed tree for a given depth.
+///|
 struct LevelInfo {
   // Our level.  for better printing
   level : Int
@@ -54,20 +59,24 @@ struct LevelInfo {
   mut needed : Int
 }
 
+///|
 fn LevelInfo::new() -> LevelInfo {
   { level: 0, last_freq: 0, next_char_freq: 0, next_pair_freq: 0, needed: 0 }
 }
 
 // set sets the code and length of an hcode.
+///|
 fn set(self : HCode, code : UInt, length : UInt) -> Unit {
   self.len = length
   self.code = code
 }
 
+///|
 fn max_node() -> LiteralNode {
   { literal: @uint.max_value, freq: @int.max_value }
 }
 
+///|
 fn bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
   let mut total = 0
   for i, f in freq {
@@ -78,6 +87,7 @@ fn bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
   total
 }
 
+///|
 let max_bits_limit = 16
 
 // bit_counts computes the number of literals assigned to each bit size in the Huffman encoding.
@@ -94,6 +104,7 @@ let max_bits_limit = 16
 //
 // bit_counts returns an integer slice in which slice[i] indicates the number of literals
 // that should be encoded in i bits.
+///|
 fn bit_counts(
   self : HuffmanEncoder,
   list : Slice[LiteralNode],
@@ -230,6 +241,7 @@ fn bit_counts(
 
 // Look at the leaves and assign them a bit count and an encoding as specified
 // in RFC 1951 3.2.2
+///|
 fn assign_encoding_and_size(
   self : HuffmanEncoder,
   bit_count : Slice[Int],
@@ -262,6 +274,7 @@ fn assign_encoding_and_size(
   }
 }
 
+///|
 fn reverse_bits(number : UInt, bit_length : Byte) -> UInt {
   let v = reverse16(number << (16 - bit_length.to_int()))
   return v
@@ -272,6 +285,7 @@ test "reverse_bits works" {
   inspect!(got, content="1")
 }
 
+///|
 fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
   if self.freqcache.length() == 0 {
     // Allocate a reusable buffer with the longest possible frequency table.
@@ -318,6 +332,7 @@ fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
   self.assign_encoding_and_size(bit_count, list)
 }
 
+///|
 fn by_frequency(a : LiteralNode, b : LiteralNode) -> Bool {
   if a.freq == b.freq {
     return a.literal.reinterpret_as_int() < b.literal.reinterpret_as_int()
@@ -325,10 +340,12 @@ fn by_frequency(a : LiteralNode, b : LiteralNode) -> Bool {
   return a.freq < b.freq
 }
 
+///|
 fn by_literal(a : LiteralNode, b : LiteralNode) -> Bool {
   return a.literal.reinterpret_as_int() < b.literal.reinterpret_as_int()
 }
 
+///|
 let fixed_literal_encoding : HuffmanEncoder = {
   codes: [
     { code: 12, len: 8 },
@@ -622,6 +639,7 @@ let fixed_literal_encoding : HuffmanEncoder = {
   bit_count: [],
 }
 
+///|
 let fixed_offset_encoding : HuffmanEncoder = {
   codes: [
     { code: 0, len: 5 },
@@ -659,6 +677,7 @@ let fixed_offset_encoding : HuffmanEncoder = {
   bit_count: [],
 }
 
+///|
 let huff_offset : HuffmanEncoder = {
   codes: [
     { code: 0, len: 1 },

@@ -1,9 +1,10 @@
+///|
 struct Writer {
   d : Compressor
   // dict : Slice[Byte]
 }
 
-/// `Writer::new` returns a new [@io.WriteCloser] compressing data at the "BestSpeed" level.
+///| `Writer::new` returns a new [@io.WriteCloser] compressing data at the "BestSpeed" level.
 /// It writes its (compressed) data to the provided `buf`.
 pub fn Writer::new(buf : @io.Writer) -> Writer {
   let d = Compressor::new(buf)
@@ -18,6 +19,7 @@ pub fn Writer::new(buf : @io.Writer) -> Writer {
 // any compressed output. The compressed data written to w
 // can only be decompressed by a [Reader] initialized with the
 // same dictionary.
+///|
 pub fn Writer::new_dict(w : @io.Writer, dict : Slice[Byte]) -> Writer {
   let dw = { w, }
   let zw = Writer::new(dw)
@@ -26,21 +28,23 @@ pub fn Writer::new_dict(w : @io.Writer, dict : Slice[Byte]) -> Writer {
   zw
 }
 
+///|
 struct DictWriter {
   w : @io.Writer
 }
 
+///|
 fn write(self : DictWriter, b : Slice[Byte]) -> (Int, IOError?) {
   self.w.write(b)
 }
 
-/// `write` writes the provided data to the flate Writer.
+///| `write` writes the provided data to the flate Writer.
 pub fn write(self : Writer, data : Slice[Byte]) -> (Int, IOError?) {
   let data = Array::from_iter(data.iter()) // unfortunate copy
   self.d.write(Slice::new(data))
 }
 
-/// `close` closes the input to the flate Writer.
+///| `close` closes the input to the flate Writer.
 /// After closing the Writer, the compressed data can be read
 /// from the `@io.Writer` provided to `new`.
 pub fn close(self : Writer) -> IOError? {

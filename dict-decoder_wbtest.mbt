@@ -241,19 +241,19 @@ test "DictDecoder" {
 
   //
   let mut str = poem
-  for ref in poem_refs {
-    if ref.0 == 0 {
-      write_string(str.substring(end=ref.1))
+  for pref in poem_refs {
+    if pref.0 == 0 {
+      write_string(str.substring(end=pref.1))
     } else {
-      write_copy(ref.0, ref.1)
+      write_copy(pref.0, pref.1)
     }
-    str = str.substring(start=ref.1)
+    str = str.substring(start=pref.1)
   }
 
   //
   want.write_string(poem)
   write_copy(dd.hist_size(), 33)
-  want.write_substring(want.to_string(), 0, 33)
+  want.write_substring(want.to_unchecked_string(), 0, 33)
 
   //
   write_string(abc)
@@ -277,26 +277,26 @@ test "DictDecoder" {
 
   //
   write_copy(dd.hist_size(), 10)
-  let to_drop = want.to_string().length() - dd.hist_size()
-  want.write_substring(want.to_string(), to_drop, 10)
+  let to_drop = want.to_unchecked_string().length() - dd.hist_size()
+  want.write_substring(want.to_unchecked_string(), to_drop, 10)
 
   //
   got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
   let got = bytes2str(got.to_bytes())
-  let want = want.to_string()
+  let want = want.to_unchecked_string()
   if got != want {
     abort("final string mismatch:\ngot  \{got}\nwant \{want}")
   }
 }
 
-/// `bytes2str` decodes a UTF-8 `Bytes` to a UTF-16 `String`.
+///| `bytes2str` decodes a UTF-8 `Bytes` to a UTF-16 `String`.
 fn bytes2str(b : Bytes) -> String {
   let chars = (b.iter() |> @decoder.utf8()).collect()
   let buf = @buffer.new(size_hint=chars.length())
   for ch in chars {
     buf.write_char(ch)
   }
-  buf.to_string()
+  buf.to_unchecked_string()
 }
 
 test "bytes2str works on simple case" {
@@ -304,7 +304,7 @@ test "bytes2str works on simple case" {
   assert_eq!(got, "simple case")
 }
 
-/// `str2bytes` encodes a UTF-16 `String` as a UTF-8 `Bytes`.
+///| `str2bytes` encodes a UTF-16 `String` as a UTF-8 `Bytes`.
 fn str2bytes(s : String) -> Bytes {
   s.iter() |> @encoder.utf8() |> Bytes::from_iter()
 }

@@ -8,12 +8,16 @@
 // This encoding algorithm, which prioritizes speed over output size, is
 // based on Snappy's LZ77-style encoder: github.com/golang/snappy
 
+///|
 let table_bits = 14 // Bits used in the table.
 
+///|
 let table_size : Int = 1 << table_bits // Size of the table.
 
+///|
 let table_mask : Int = table_size - 1 // Mask for table indices. Redundant, but can eliminate bounds checks.
 
+///|
 let table_shift : Int = 32 - table_bits // Right-shift to get the table_bits most significant bits of a UInt.
 
 // The LZ77 step produces a sequence of literal tokens and <length, offset>
@@ -23,17 +27,22 @@ let table_shift : Int = 32 - table_bits // Right-shift to get the table_bits mos
 // compressor uses a higher minimum match length, enabling optimizations
 // such as finding matches via 32-bit loads and compares.
 
+///|
 let base_match_length = 3 // The smallest match length per the RFC section 3.2.5
 
+///|
 let max_match_length = 258 // The largest match length
 
+///|
 let base_match_offset = 1 // The smallest match offset
 
+///|
 let max_match_offset : Int = 1 << 15 // The largest match offset
 
 // The maximum number of tokens we put into a single flate block, just to
 // stop things from getting too large.
 
+///|
 let max_store_block_size = 65535
 
 // Reset the buffer offset when reaching this.
@@ -42,8 +51,10 @@ let max_store_block_size = 65535
 // of the buffer, we need to subtract the current and input
 // buffer to not risk overflowing the Int.
 
+///|
 let buffer_reset : Int = @int.max_value - max_store_block_size * 2
 
+///|
 fn load32(b : Slice[Byte], i : Int) -> UInt {
   return b[i + 0].to_uint() |
     (b[i + 1].to_uint() << 8) |
@@ -51,6 +62,7 @@ fn load32(b : Slice[Byte], i : Int) -> UInt {
     (b[i + 3].to_uint() << 24)
 }
 
+///|
 fn load64(b : Slice[Byte], i : Int) -> UInt64 {
   return b[i + 0].to_uint().to_uint64() |
     (b[i + 1].to_uint().to_uint64() << 8) |
@@ -62,6 +74,7 @@ fn load64(b : Slice[Byte], i : Int) -> UInt64 {
     (b[i + 7].to_uint().to_uint64() << 56)
 }
 
+///|
 fn hash(u : UInt) -> Int { // uint32 - but always used as int below
   let v = (u * 0x1e35a7bd) >> table_shift
   return v.reinterpret_as_int()
@@ -72,10 +85,13 @@ fn hash(u : UInt) -> Int { // uint32 - but always used as int below
 // aren't necessary in the pure Go implementation, as we don't use those same
 // optimizations, but using the same thresholds doesn't really hurt.
 
+///|
 let input_margin : Int = 16 - 1
 
+///|
 let min_non_literal_block_size : Int = 1 + 1 + input_margin
 
+///|
 struct TableEntry {
   val : UInt // Value at destination
   mut offset : Int
@@ -83,12 +99,14 @@ struct TableEntry {
 
 // DeflateFast maintains the table for matches,
 // and the previous byte block for cross block matching.
+///|
 struct DeflateFast {
   table : FixedArray[TableEntry] // [table_size]TableEntry
   mut prev : Slice[Byte] // Previous block, zero length if unknown.
   mut cur : Int // Current match offset.
 } derive(Show, Eq)
 
+///|
 fn DeflateFast::new() -> DeflateFast {
   {
     table: FixedArray::make(table_size, { val: 0U, offset: 0 }),
@@ -99,6 +117,7 @@ fn DeflateFast::new() -> DeflateFast {
 
 // encode encodes a block given in src and appends tokens
 // to dst and returns the result.
+///|
 fn encode(
   self : DeflateFast,
   dst : Array[Token],
@@ -248,6 +267,7 @@ fn encode(
   emit_remainder()
 }
 
+///|
 fn emit_literal(dst : Array[Token], lit : Slice[Byte]) -> Array[Token] {
   for i in 0..<lit.length() {
     let v = lit[i]
@@ -259,6 +279,7 @@ fn emit_literal(dst : Array[Token], lit : Slice[Byte]) -> Array[Token] {
 // match_len returns the match length between src[s:] and src[t:].
 // t can be negative to indicate the match is starting in self.prev.
 // We assume that src[s-4:s] and src[t-4:t] already match.
+///|
 fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
   let mut s1 = s + max_match_length - 4
   if s1 > src.length() {
@@ -314,6 +335,7 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
 
 // Reset resets the encoding history.
 // This ensures that no matches are made to the previous block.
+///|
 fn reset(self : DeflateFast) -> Unit {
   self.prev = Slice::new([])
   // Bump the offset, so all matches will fail distance check.
@@ -330,6 +352,7 @@ fn reset(self : DeflateFast) -> Unit {
 // This is only called in rare situations to prevent integer overflow.
 //
 // See https://golang.org/issue/18636 and https://github.com/golang/go/issues/34121.
+///|
 fn shift_offsets(self : DeflateFast) -> Unit {
   if self.prev.length() == 0 {
     // We have no history; just clear the table.
