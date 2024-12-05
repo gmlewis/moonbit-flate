@@ -4,7 +4,6 @@
   ],
   "wbtest-import": [
     "gmlewis/flate/decoder",
-    "gmlewis/flate/encoder",
-    "gmlewis/io"
+    "gmlewis/flate/encoder"
   ]
 }
