@@ -253,7 +253,7 @@ test "DictDecoder" {
   //
   want.write_string(poem)
   write_copy(dd.hist_size(), 33)
-  want.write_substring(want.to_unchecked_string(), 0, 33)
+  want.write_substring(want.contents().to_unchecked_string(), 0, 33)
 
   //
   write_string(abc)
@@ -277,13 +277,13 @@ test "DictDecoder" {
 
   //
   write_copy(dd.hist_size(), 10)
-  let to_drop = want.to_unchecked_string().length() - dd.hist_size()
-  want.write_substring(want.to_unchecked_string(), to_drop, 10)
+  let to_drop = want.contents().to_unchecked_string().length() - dd.hist_size()
+  want.write_substring(want.contents().to_unchecked_string(), to_drop, 10)
 
   //
   got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
   let got = bytes2str(got.to_bytes())
-  let want = want.to_unchecked_string()
+  let want = want.contents().to_unchecked_string()
   if got != want {
     abort("final string mismatch:\ngot  \{got}\nwant \{want}")
   }
@@ -296,7 +296,7 @@ fn bytes2str(b : Bytes) -> String {
   for ch in chars {
     buf.write_char(ch)
   }
-  buf.to_unchecked_string()
+  buf.contents().to_unchecked_string()
 }
 
 test "bytes2str works on simple case" {
