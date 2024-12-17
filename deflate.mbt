@@ -76,7 +76,7 @@ struct Compressor {
 }
 
 ///|
-fn Compressor::new(buf : @io.Writer) -> Compressor {
+fn Compressor::new(buf : &@io.Writer) -> Compressor {
   let w = HuffmanBitWriter::new(buf)
   {
     w,

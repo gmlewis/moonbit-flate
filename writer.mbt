@@ -6,7 +6,7 @@ struct Writer {
 
 ///| `Writer::new` returns a new [@io.WriteCloser] compressing data at the "BestSpeed" level.
 /// It writes its (compressed) data to the provided `buf`.
-pub fn Writer::new(buf : @io.Writer) -> Writer {
+pub fn Writer::new(buf : &@io.Writer) -> Writer {
   let d = Compressor::new(buf)
   // let dict = Bytes::new(0)
   // { d, dict }
@@ -20,7 +20,7 @@ pub fn Writer::new(buf : @io.Writer) -> Writer {
 // can only be decompressed by a [Reader] initialized with the
 // same dictionary.
 ///|
-pub fn Writer::new_dict(w : @io.Writer, dict : Slice[Byte]) -> Writer {
+pub fn Writer::new_dict(w : &@io.Writer, dict : Slice[Byte]) -> Writer {
   let dw = { w, }
   let zw = Writer::new(dw)
   zw.d.fill_window(dict)
@@ -30,7 +30,7 @@ pub fn Writer::new_dict(w : @io.Writer, dict : Slice[Byte]) -> Writer {
 
 ///|
 struct DictWriter {
-  w : @io.Writer
+  w : &@io.Writer
 }
 
 ///|

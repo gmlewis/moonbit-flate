@@ -49,7 +49,7 @@ test "TestBestSpeed" {
       tc[0] = first_n
       let buf = @io.Buffer::new()
       let want = @io.Buffer::new()
-      let w : @io.WriteCloser = @flate.Writer::new(buf)
+      let w : &@io.WriteCloser = @flate.Writer::new(buf)
       for n in tc {
         let subset = Bytes::new(n)
         subset.blit(0, abcabc, 0, n)
@@ -74,7 +74,7 @@ test "TestBestSpeed" {
 
       //
       let got = @io.Buffer::new()
-      let r : @io.ReadCloser = @flate.Reader::new(buf)
+      let r : &@io.ReadCloser = &@flate.Reader::new(buf)
       guard let (_, None) = @io.copy(got, r) else {
         e => abort("test #\{i}: @io.copy: \{e}")
       }

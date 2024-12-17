@@ -79,7 +79,7 @@ struct HuffmanBitWriter {
   // writer is the underlying writer.
   // Do not use it directly; use the write method, which ensures
   // that Write errors are sticky.
-  writer : @io.Writer
+  writer : &@io.Writer
 
   // Data waiting to be written is bytes[0:nbytes]
   // and then the low nbits of bits.  Data is always written
@@ -99,7 +99,7 @@ struct HuffmanBitWriter {
 }
 
 ///|
-fn HuffmanBitWriter::new(writer : @io.Writer) -> HuffmanBitWriter {
+fn HuffmanBitWriter::new(writer : &@io.Writer) -> HuffmanBitWriter {
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
   let codegen = Bytes::make(max_num_lit + offset_code_count + 1, b'\x00')

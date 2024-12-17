@@ -228,7 +228,7 @@ pub(open) trait Reader {
 ///|
 struct Decompressor {
   // Input source.
-  mut r : Reader
+  mut r : &Reader
   mut roffset : Int64
 
   // Input bits, in top of b.
@@ -273,7 +273,7 @@ type StepFunc (Decompressor) -> Unit
 
 ///| `Reader::new` returns a new [@io.ReadCloser] that can be used
 /// to read the uncompressed version of r.
-pub fn Reader::new(r : Reader) -> Decompressor {
+pub fn &Reader::new(r : &Reader) -> Decompressor {
   Decompressor::new(r, Slice::new([]))
 }
 
@@ -282,12 +282,12 @@ pub fn Reader::new(r : Reader) -> Decompressor {
 /// the uncompressed data stream started with the given dictionary,
 /// which has already been read. NewReaderDict is typically used
 /// to read data compressed by NewWriterDict.
-pub fn Reader::new_dict(r : Reader, dict : Slice[Byte]) -> Decompressor {
+pub fn &Reader::new_dict(r : &Reader, dict : Slice[Byte]) -> Decompressor {
   Decompressor::new(r, dict)
 }
 
 ///|
-fn Decompressor::new(r : Reader, dict : Slice[Byte]) -> Decompressor {
+fn Decompressor::new(r : &Reader, dict : Slice[Byte]) -> Decompressor {
   {
     r,
     roffset: 0,
@@ -815,12 +815,12 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
 }
 
 ///|
-fn make_reader(self : Decompressor, r : Reader) -> Unit {
+fn make_reader(self : Decompressor, r : &Reader) -> Unit {
   self.r = r
 }
 
 ///|
-fn reset(self : Decompressor, r : Reader, dict : Slice[Byte]) -> Unit {
+fn reset(self : Decompressor, r : &Reader, dict : Slice[Byte]) -> Unit {
   self.r = r
   self.roffset = 0
   self.b = 0
