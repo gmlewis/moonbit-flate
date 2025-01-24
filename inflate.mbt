@@ -378,7 +378,7 @@ pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
 }
 
 ///|
-pub fn close(self : Decompressor) -> IOError? {
+pub fn Decompressor::close(self : Decompressor) -> IOError? {
   if Some(ioeof) == self.err {
     return None
   }
@@ -820,7 +820,11 @@ fn make_reader(self : Decompressor, r : &Reader) -> Unit {
 }
 
 ///|
-fn reset(self : Decompressor, r : &Reader, dict : Slice[Byte]) -> Unit {
+fn Decompressor::reset(
+  self : Decompressor,
+  r : &Reader,
+  dict : Slice[Byte]
+) -> Unit {
   self.r = r
   self.roffset = 0
   self.b = 0

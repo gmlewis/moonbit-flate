@@ -91,7 +91,7 @@ struct HuffmanBitWriter {
   mut nbytes : Int
   literal_freq : Array[Int]
   offset_freq : Array[Int]
-  codegen : Bytes
+  codegen : FixedArray[Byte]
   literal_encoding : HuffmanEncoder
   offset_encoding : HuffmanEncoder
   codegen_encoding : HuffmanEncoder
@@ -102,7 +102,7 @@ struct HuffmanBitWriter {
 fn HuffmanBitWriter::new(writer : &@io.Writer) -> HuffmanBitWriter {
   let literal_freq = Array::make(max_num_lit, 0)
   let offset_freq = Array::make(offset_code_count, 0)
-  let codegen = Bytes::make(max_num_lit + offset_code_count + 1, b'\x00')
+  let codegen = FixedArray::make(max_num_lit + offset_code_count + 1, b'\x00')
   let literal_encoding = HuffmanEncoder::new(max_num_lit)
   let codegen_encoding = HuffmanEncoder::new(codegen_code_count)
   let offset_encoding = HuffmanEncoder::new(offset_code_count)
@@ -148,7 +148,7 @@ fn flush(self : HuffmanBitWriter) -> Unit {
 }
 
 ///|
-fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
+fn HuffmanBitWriter::write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
@@ -157,7 +157,7 @@ fn write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
 }
 
 ///|
-fn write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
+fn HuffmanBitWriter::write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
   if not(self.err.is_empty()) {
     return
   }

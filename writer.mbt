@@ -34,12 +34,12 @@ struct DictWriter {
 }
 
 ///|
-fn write(self : DictWriter, b : Slice[Byte]) -> (Int, IOError?) {
+fn DictWriter::write(self : DictWriter, b : Slice[Byte]) -> (Int, IOError?) {
   self.w.write(b)
 }
 
 ///| `write` writes the provided data to the flate Writer.
-pub fn write(self : Writer, data : Slice[Byte]) -> (Int, IOError?) {
+pub fn Writer::write(self : Writer, data : Slice[Byte]) -> (Int, IOError?) {
   let data = Array::from_iter(data.iter()) // unfortunate copy
   self.d.write(Slice::new(data))
 }
@@ -47,6 +47,6 @@ pub fn write(self : Writer, data : Slice[Byte]) -> (Int, IOError?) {
 ///| `close` closes the input to the flate Writer.
 /// After closing the Writer, the compressed data can be read
 /// from the `@io.Writer` provided to `new`.
-pub fn close(self : Writer) -> IOError? {
+pub fn Writer::close(self : Writer) -> IOError? {
   self.d.close()
 }

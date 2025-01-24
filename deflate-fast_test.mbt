@@ -11,14 +11,14 @@
 // (65535).
 test "TestBestSpeed" {
   let abc_len = 128
-  let abc = Bytes::make(abc_len, b'\x00')
+  let abc = FixedArray::make(abc_len, b'\x00')
   for i = 0; i < abc_len; i = i + 1 {
     abc[i] = i.to_byte()
   }
   let num_copies = 131072 / abc_len
-  let abcabc = Bytes::new(abc_len * num_copies)
+  let abcabc = FixedArray::make(abc_len * num_copies, b'\x00')
   for i = 0; i < num_copies; i = i + 1 {
-    blit(abcabc, i * abc_len, abc, 0, abc_len)
+    FixedArray::unsafe_blit(abcabc, i * abc_len, abc, 0, abc_len)
   }
 
   //
@@ -51,8 +51,10 @@ test "TestBestSpeed" {
       let want = @io.Buffer::new()
       let w : &@io.WriteCloser = @flate.Writer::new(buf)
       for n in tc {
-        let subset = Bytes::new(n)
-        subset.blit(0, abcabc, 0, n)
+        // TODO: Changing from Bytes to FixedArray[Byte] hurts performance.
+        let subset = FixedArray::make(n, b'\x00')
+        subset.unsafe_blit(0, abcabc, 0, n)
+        let subset = Bytes::from_fixedarray(subset)
         guard let (_, None) = want.write_bytes(subset) else {
           e =>
             abort(
