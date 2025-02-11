@@ -1,6 +1,7 @@
 // Copyright 2024 peter-jerry-ye
 // SPDX-License-Identifier: MIT
 
+///|
 test "utf8" {
   @encoder.utf8("abcd".iter()).collect()
   |> inspect!(content="[b'\\x61', b'\\x62', b'\\x63', b'\\x64']")

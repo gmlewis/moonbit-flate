@@ -11,6 +11,7 @@ typealias Slice[T] = @io.Slice[T]
 ///|
 type! TestError String derive(Show)
 
+///|
 test "writer dict" {
   let dict = Slice::new(b"hello world".to_array())
   let text = Slice::new(b"hello again world".to_array())

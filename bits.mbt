@@ -18,6 +18,7 @@ fn reverse16(x : UInt) -> UInt {
     (rev8tab[(x & 0xff).reinterpret_as_int()] << 8)
 }
 
+///|
 test "reverse16 works as expected" {
   let got = reverse16(32768)
   inspect!(got, content="1")

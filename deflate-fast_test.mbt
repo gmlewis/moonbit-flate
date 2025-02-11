@@ -9,6 +9,7 @@
 // recovers the original input. The Write sizes are near the thresholds in the
 // compressor.encSpeed method (0, 16, 128), as well as near maxStoreBlockSize
 // (65535).
+///|
 test "TestBestSpeed" {
   let abc_len = 128
   let abc = FixedArray::make(abc_len, b'\x00')

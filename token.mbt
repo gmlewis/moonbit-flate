@@ -85,6 +85,7 @@ fn offset(self : Token) -> UInt {
   self._ & offset_mask
 }
 
+///|
 test "offset behaves correctly" {
   let token = Token(2143289471U)
   let got = token.offset()
