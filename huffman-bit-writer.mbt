@@ -75,7 +75,7 @@ let codegen_order : Array[Int] = [
 ]
 
 ///|
-struct HuffmanBitWriter {
+priv struct HuffmanBitWriter {
   // writer is the underlying writer.
   // Do not use it directly; use the write method, which ensures
   // that Write errors are sticky.

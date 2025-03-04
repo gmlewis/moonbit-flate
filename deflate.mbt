@@ -41,7 +41,7 @@ let hash_mask : UInt = (1U << HASH_BITS) - 1
 // let max_hash_offset : Int = 1 << 24
 
 ///|
-struct Compressor {
+priv struct Compressor {
   w : HuffmanBitWriter
 
   // compression algorithm

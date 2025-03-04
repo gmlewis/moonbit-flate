@@ -6,7 +6,7 @@
 // license that can be found in the LICENSE file.
 
 ///|
-struct HuffmanEncoder {
+priv struct HuffmanEncoder {
   codes : Array[HCode]
   mut freqcache : Array[LiteralNode]
   bit_count : Array[Int] // [17]Int
@@ -26,21 +26,21 @@ fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
 }
 
 ///|
-struct LiteralNode {
+priv struct LiteralNode {
   literal : UInt // uint16
   freq : Int
 } derive(Show, Eq)
 
 // HCode is a huffman code with a bit code and bit length.
 ///|
-struct HCode {
+priv struct HCode {
   mut code : UInt
   mut len : UInt
 } derive(Show, Eq)
 
 // A levelInfo describes the state of the constructed tree for a given depth.
 ///|
-struct LevelInfo {
+priv struct LevelInfo {
   // Our level.  for better printing
   level : Int
 

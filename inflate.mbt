@@ -76,7 +76,7 @@ let huffman_count_mask = 15U
 let huffman_value_shift = 4
 
 ///|
-struct HuffmanDecoder {
+priv struct HuffmanDecoder {
   mut min : Int // the minimum code length
   mut chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
   mut links : Array[Array[UInt]] // [][]uint32               // overflow links
@@ -263,13 +263,13 @@ struct Decompressor {
 }
 
 ///|
-enum StepState {
+priv enum StepState {
   StateInit
   StateDict
 }
 
 ///|
-type StepFunc (Decompressor) -> Unit
+priv type StepFunc (Decompressor) -> Unit
 
 ///| `Reader::new` returns a new [@io.ReadCloser] that can be used
 /// to read the uncompressed version of r.
@@ -315,7 +315,7 @@ fn Decompressor::new(r : &Reader, dict : Slice[Byte]) -> Decompressor {
 fn next_block(self : Decompressor) -> Unit {
   while self.nb < 1U + 2 {
     self.err = self.more_bits()
-    guard let None = self.err else { _ => return }
+    guard self.err is None else { return }
 
   }
   self.final_flag = (self.b & 1) == 1
@@ -584,7 +584,7 @@ fn read_literal(self : Decompressor) -> Unit {
   if n > 0 {
     while self.nb < n {
       self.err = self.more_bits()
-      guard let None = self.err else { _ => return }
+      guard self.err is None else { return }
 
     }
     let mask = (1U << n.reinterpret_as_int()) - 1
@@ -599,7 +599,7 @@ fn read_literal(self : Decompressor) -> Unit {
     None => {
       while self.nb < 5 {
         self.err = self.more_bits()
-        guard let None = self.err else { _ => return }
+        guard self.err is None else { return }
 
       }
       let to_rev = ((self.b & 0x1F) << 3).to_byte()
@@ -629,7 +629,7 @@ fn read_literal(self : Decompressor) -> Unit {
     let mut extra = (dist & 1) << nb.reinterpret_as_int()
     while self.nb < nb {
       self.err = self.more_bits()
-      guard let None = self.err else { _ => return }
+      guard self.err is None else { return }
 
     }
     let mask = (1U << nb.reinterpret_as_int()) - 1
