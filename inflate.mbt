@@ -225,12 +225,12 @@ pub(open) trait Reader {
 }
 
 ///|
-impl @io.Reader for &Reader with read(self, b) {
+pub impl @io.Reader for &Reader with read(self, b) {
   self.read(b)
 }
 
 ///|
-impl @io.ByteReader for &Reader with read_byte(self) {
+pub impl @io.ByteReader for &Reader with read_byte(self) {
   self.read_byte()
 }
 

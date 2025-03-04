@@ -29,12 +29,12 @@ pub fn Writer::new_dict(w : &@io.Writer, dict : Slice[Byte]) -> Writer {
 }
 
 ///|
-priv struct DictWriter {
+struct DictWriter {
   w : &@io.Writer
 }
 
 ///|
-impl @io.Writer for DictWriter with write(self, b) {
+pub impl @io.Writer for DictWriter with write(self, b) {
   self.w.write(b)
 }
 
