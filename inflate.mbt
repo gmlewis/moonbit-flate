@@ -224,6 +224,26 @@ pub(open) trait Reader {
   read_byte(Self) -> (Byte, IOError?)
 }
 
+///|
+impl @io.Reader for &Reader with read(self, b) {
+  self.read(b)
+}
+
+///|
+impl @io.ByteReader for &Reader with read_byte(self) {
+  self.read_byte()
+}
+
+// ///|
+// impl Reader for @io.Buffer with read(self, b) {
+//   self.read(b)
+// }
+
+// ///|
+// impl Reader for @io.Buffer with read_byte(self) {
+//   self.read_byte()
+// }
+
 // Decompress state.
 ///|
 struct Decompressor {
@@ -350,7 +370,8 @@ fn next_block(self : Decompressor) -> Unit {
 }
 
 ///|
-pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
+// pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
+pub impl @io.ReadCloser for Decompressor with read(self, b) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -378,7 +399,7 @@ pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
 }
 
 ///|
-pub fn Decompressor::close(self : Decompressor) -> IOError? {
+pub impl @io.ReadCloser for Decompressor with close(self) {
   if Some(ioeof) == self.err {
     return None
   }
