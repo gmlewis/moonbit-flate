@@ -56,14 +56,15 @@ test "TestBestSpeed" {
         let subset = FixedArray::make(n, b'\x00')
         subset.unsafe_blit(0, abcabc, 0, n)
         let subset = Bytes::from_fixedarray(subset)
-        guard let (_, None) = want.write_bytes(subset) else {
-          e =>
-            abort(
-              "test #\{i}: want.write_bytes(subset): unexpected error: \{e}",
-            )
+        let (_, err) = want.write_bytes(subset)
+        guard err is None else {
+          abort(
+            "test #\{i}: want.write_bytes(subset): unexpected error: \{err}",
+          )
         }
-        guard let (_, None) = w.write(@io.Slice::new(subset.to_array())) else {
-          e => abort("test #\{i}: w.write(): unexpected error: \{e}")
+        let (_, err) = w.write(@io.Slice::new(subset.to_array()))
+        guard err is None else {
+          abort("test #\{i}: w.write(): unexpected error: \{err}")
         }
         // if not(flush) {
         // continue
@@ -71,16 +72,16 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      guard let None = w.close() else {
-        e => abort("test #\{i}: w.close(): unexpected error: \{e}")
+      let err = w.close()
+      guard err is None else {
+        abort("test #\{i}: w.close(): unexpected error: \{err}")
       }
 
       //
       let got = @io.Buffer::new()
       let r : &@io.ReadCloser = &@flate.Reader::new(buf)
-      guard let (_, None) = @io.copy(got, r) else {
-        e => abort("test #\{i}: @io.copy: \{e}")
-      }
+      let (_, err) = @io.copy(got, r)
+      guard err is None else { abort("test #\{i}: @io.copy: \{err}") }
       try {
         let got = got.to_bytes()
         assert_eq!(got, want)

@@ -17,19 +17,19 @@ test "writer dict" {
   let text = Slice::new(b"hello again world".to_array())
   let b = @io.Buffer::new()
   let w = @flate.Writer::new(b)
-  guard let (11, None) = w.write(dict)
+  guard w.write(dict) is (11, None)
   // w.flush()
   // b.reset()
-  guard let (17, None) = w.write(text)
-  guard let None = w.close()
+  guard w.write(text) is (17, None)
+  guard w.close() is None
   let want = b.to_bytes().to_array()
   assert_eq!(38, want.length())
 
   //
   let b1 = @io.Buffer::new()
   let w = @flate.Writer::new_dict(b1, dict)
-  guard let (17, None) = w.write(text)
-  guard let None = w.close()
+  guard w.write(text) is (17, None)
+  guard w.close() is None
 
   //
   let got = b1.to_bytes().to_array()

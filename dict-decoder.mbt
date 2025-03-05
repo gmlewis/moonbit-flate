@@ -25,7 +25,7 @@
 /// For performance reasons, this implementation performs little to no sanity
 /// checks about the arguments. As such, the invariants documented for each
 /// method call must be respected.
-struct DictDecoder {
+priv struct DictDecoder {
   hist : Slice[Byte] // []byte // Sliding window history
 
   // Invariant: 0 <= rd_pos <= wr_pos <= len(hist)

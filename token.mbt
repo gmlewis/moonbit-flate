@@ -59,7 +59,7 @@ let offset_codes : Array[Int] = [ // Array[UInt] // Values are always used for i
 ]
 
 ///|
-type Token UInt derive(Show)
+priv type Token UInt derive(Show)
 
 // Convert a literal into a literal token.
 ///|

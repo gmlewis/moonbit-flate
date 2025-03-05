@@ -76,7 +76,7 @@ let huffman_count_mask = 15U
 let huffman_value_shift = 4
 
 ///|
-struct HuffmanDecoder {
+priv struct HuffmanDecoder {
   mut min : Int // the minimum code length
   mut chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
   mut links : Array[Array[UInt]] // [][]uint32               // overflow links
@@ -224,6 +224,26 @@ pub(open) trait Reader {
   read_byte(Self) -> (Byte, IOError?)
 }
 
+///|
+pub impl @io.Reader for &Reader with read(self, b) {
+  self.read(b)
+}
+
+///|
+pub impl @io.ByteReader for &Reader with read_byte(self) {
+  self.read_byte()
+}
+
+///|
+pub impl Reader for @io.Buffer with read(self, b) {
+  self.read(b)
+}
+
+///|
+pub impl Reader for @io.Buffer with read_byte(self) {
+  self.read_byte()
+}
+
 // Decompress state.
 ///|
 struct Decompressor {
@@ -263,13 +283,13 @@ struct Decompressor {
 }
 
 ///|
-enum StepState {
+priv enum StepState {
   StateInit
   StateDict
 }
 
 ///|
-type StepFunc (Decompressor) -> Unit
+priv type StepFunc (Decompressor) -> Unit
 
 ///| `Reader::new` returns a new [@io.ReadCloser] that can be used
 /// to read the uncompressed version of r.
@@ -315,7 +335,7 @@ fn Decompressor::new(r : &Reader, dict : Slice[Byte]) -> Decompressor {
 fn next_block(self : Decompressor) -> Unit {
   while self.nb < 1U + 2 {
     self.err = self.more_bits()
-    guard let None = self.err else { _ => return }
+    guard self.err is None else { return }
 
   }
   self.final_flag = (self.b & 1) == 1
@@ -350,7 +370,8 @@ fn next_block(self : Decompressor) -> Unit {
 }
 
 ///|
-pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
+// pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
+pub impl @io.ReadCloser for Decompressor with read(self, b) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -378,7 +399,7 @@ pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
 }
 
 ///|
-pub fn Decompressor::close(self : Decompressor) -> IOError? {
+pub impl @io.ReadCloser for Decompressor with close(self) {
   if Some(ioeof) == self.err {
     return None
   }
@@ -584,7 +605,7 @@ fn read_literal(self : Decompressor) -> Unit {
   if n > 0 {
     while self.nb < n {
       self.err = self.more_bits()
-      guard let None = self.err else { _ => return }
+      guard self.err is None else { return }
 
     }
     let mask = (1U << n.reinterpret_as_int()) - 1
@@ -599,7 +620,7 @@ fn read_literal(self : Decompressor) -> Unit {
     None => {
       while self.nb < 5 {
         self.err = self.more_bits()
-        guard let None = self.err else { _ => return }
+        guard self.err is None else { return }
 
       }
       let to_rev = ((self.b & 0x1F) << 3).to_byte()
@@ -629,7 +650,7 @@ fn read_literal(self : Decompressor) -> Unit {
     let mut extra = (dist & 1) << nb.reinterpret_as_int()
     while self.nb < nb {
       self.err = self.more_bits()
-      guard let None = self.err else { _ => return }
+      guard self.err is None else { return }
 
     }
     let mask = (1U << nb.reinterpret_as_int()) - 1
