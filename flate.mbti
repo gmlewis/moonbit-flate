@@ -8,63 +8,25 @@ let ioeof : @io.IOError
 let writer_closed_error : @io.IOError
 
 // Types and methods
-type Compressor
-
 type Decompressor
-impl Decompressor {
-  close(Self) -> @io.IOError?
-  read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
-}
-
-type DeflateFast
-impl Eq for DeflateFast
-impl Show for DeflateFast
-
-type DictDecoder
+impl @io.ReadCloser for Decompressor
 
 type DictWriter
-
-type HCode
-impl Eq for HCode
-impl Show for HCode
-
-type HuffmanBitWriter
-
-type HuffmanDecoder
-
-type HuffmanEncoder
-impl Eq for HuffmanEncoder
-impl Show for HuffmanEncoder
-
-type LevelInfo
-
-type LiteralNode
-impl Eq for LiteralNode
-impl Show for LiteralNode
-
-type StepFunc
-
-type StepState
-
-type TableEntry
-impl Eq for TableEntry
-impl Show for TableEntry
-
-type Token
-impl Show for Token
+impl @io.Writer for DictWriter
 
 type Writer
 impl Writer {
-  close(Self) -> @io.IOError?
   new(&@io.Writer) -> Self
   new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
-  write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
 }
+impl @io.WriteCloser for Writer
 
 impl Reader {
   new(&Self) -> Decompressor
   new_dict(&Self, @io.Slice[Byte]) -> Decompressor
 }
+impl @io.ByteReader for &Reader
+impl @io.Reader for &Reader
 
 // Type aliases
 
@@ -73,4 +35,5 @@ pub(open) trait Reader {
   read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
   read_byte(Self) -> (Byte, @io.IOError?)
 }
+impl Reader for @io.Buffer
 

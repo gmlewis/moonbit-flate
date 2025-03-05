@@ -234,15 +234,15 @@ pub impl @io.ByteReader for &Reader with read_byte(self) {
   self.read_byte()
 }
 
-// ///|
-// impl Reader for @io.Buffer with read(self, b) {
-//   self.read(b)
-// }
+///|
+pub impl Reader for @io.Buffer with read(self, b) {
+  self.read(b)
+}
 
-// ///|
-// impl Reader for @io.Buffer with read_byte(self) {
-//   self.read_byte()
-// }
+///|
+pub impl Reader for @io.Buffer with read_byte(self) {
+  self.read_byte()
+}
 
 // Decompress state.
 ///|
