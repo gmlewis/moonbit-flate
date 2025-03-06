@@ -370,8 +370,7 @@ fn next_block(self : Decompressor) -> Unit {
 }
 
 ///|
-// pub fn read(self : Decompressor, b : Slice[Byte]) -> (Int, IOError?) {
-pub impl @io.ReadCloser for Decompressor with read(self, b) {
+pub impl @io.Reader for Decompressor with read(self, b) {
   for {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
@@ -399,7 +398,7 @@ pub impl @io.ReadCloser for Decompressor with read(self, b) {
 }
 
 ///|
-pub impl @io.ReadCloser for Decompressor with close(self) {
+pub impl @io.Closer for Decompressor with close(self) {
   if Some(ioeof) == self.err {
     return None
   }

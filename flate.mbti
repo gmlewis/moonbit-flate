@@ -9,7 +9,8 @@ let writer_closed_error : @io.IOError
 
 // Types and methods
 type Decompressor
-impl @io.ReadCloser for Decompressor
+impl @io.Closer for Decompressor
+impl @io.Reader for Decompressor
 
 type DictWriter
 impl @io.Writer for DictWriter
@@ -19,7 +20,8 @@ impl Writer {
   new(&@io.Writer) -> Self
   new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
 }
-impl @io.WriteCloser for Writer
+impl @io.Closer for Writer
+impl @io.Writer for Writer
 
 impl Reader {
   new(&Self) -> Decompressor
