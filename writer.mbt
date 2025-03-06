@@ -39,7 +39,7 @@ pub impl @io.Writer for DictWriter with write(self, b) {
 }
 
 ///| `write` writes the provided data to the flate Writer.
-pub impl @io.WriteCloser for Writer with write(self, data) {
+pub impl @io.Writer for Writer with write(self, data) {
   let data = Array::from_iter(data.iter()) // unfortunate copy
   self.d.write(Slice::new(data))
 }
@@ -47,6 +47,6 @@ pub impl @io.WriteCloser for Writer with write(self, data) {
 ///| `close` closes the input to the flate Writer.
 /// After closing the Writer, the compressed data can be read
 /// from the `@io.Writer` provided to `new`.
-pub impl @io.WriteCloser for Writer with close(self) {
+pub impl @io.Closer for Writer with close(self) {
   self.d.close()
 }
