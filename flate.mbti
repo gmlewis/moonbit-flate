@@ -1,6 +1,8 @@
-package gmlewis/flate
+package "gmlewis/flate"
 
-alias @gmlewis/io as @io
+import(
+  "gmlewis/io"
+)
 
 // Values
 let ioeof : @io.IOError

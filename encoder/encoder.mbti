@@ -1,4 +1,4 @@
-package gmlewis/flate/encoder
+package "gmlewis/flate/encoder"
 
 // Values
 fn utf8(Iter[Char]) -> Iter[Byte]
