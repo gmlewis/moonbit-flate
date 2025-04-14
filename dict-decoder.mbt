@@ -5,7 +5,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-///| DictDecoder implements the LZ77 sliding dictionary as used in decompression.
+///|
+/// DictDecoder implements the LZ77 sliding dictionary as used in decompression.
 /// LZ77 decompresses data through sequences of two forms of commands:
 ///
 ///   - Literal insertions: Runs of one or more symbols are inserted into the data
@@ -34,7 +35,8 @@ priv struct DictDecoder {
   mut full : Bool // Has a full window length been written yet?
 }
 
-///| DictDecoder::new initializes DictDecoder to have a sliding window dictionary of the given
+///|
+/// DictDecoder::new initializes DictDecoder to have a sliding window dictionary of the given
 /// size. If a preset dict is provided, it will initialize the dictionary with
 /// the contents of dict.
 fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
@@ -57,7 +59,8 @@ fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
   dd
 }
 
-///| hist_size reports the total amount of historical data in the dictionary.
+///|
+/// hist_size reports the total amount of historical data in the dictionary.
 fn hist_size(self : DictDecoder) -> Int {
   if self.full {
     return self.hist.length()
@@ -65,31 +68,36 @@ fn hist_size(self : DictDecoder) -> Int {
   self.wr_pos
 }
 
-///| avail_read reports the number of bytes that can be flushed by read_flush.
+///|
+/// avail_read reports the number of bytes that can be flushed by read_flush.
 fn avail_read(self : DictDecoder) -> Int {
   self.wr_pos - self.rd_pos
 }
 
-///| avail_write reports the available amount of output buffer space.
+///|
+/// avail_write reports the available amount of output buffer space.
 fn avail_write(self : DictDecoder) -> Int {
   self.hist.length() - self.wr_pos
 }
 
-///| write_slice returns a slice of the available buffer to write data to.
+///|
+/// write_slice returns a slice of the available buffer to write data to.
 ///
 /// This invariant will be kept: len(s) <= avail_write()
 fn write_slice(self : DictDecoder) -> Slice[Byte] {
   self.hist[self.wr_pos:]
 }
 
-///| write_mark advances the writer pointer by cnt.
+///|
+/// write_mark advances the writer pointer by cnt.
 ///
 /// This invariant must be kept: 0 <= cnt <= avail_write()
 fn write_mark(self : DictDecoder, cnt : Int) -> Unit {
   self.wr_pos += cnt
 }
 
-///| write_byte writes a single byte to the dictionary.
+///|
+/// write_byte writes a single byte to the dictionary.
 ///
 /// This invariant must be kept: 0 < avail_write()
 fn write_byte(self : DictDecoder, c : Byte) -> Unit {
@@ -97,7 +105,8 @@ fn write_byte(self : DictDecoder, c : Byte) -> Unit {
   self.wr_pos += 1
 }
 
-///| write_copy copies a string at a given (dist, length) to the output.
+///|
+/// write_copy copies a string at a given (dist, length) to the output.
 /// This returns the number of bytes copied and may be less than the requested
 /// length if the available space in the output buffer is too small.
 ///
@@ -144,7 +153,8 @@ fn write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
   return dst_pos - dst_base
 }
 
-///| try_write_copy tries to copy a string at a given (distance, length) to the
+///|
+/// try_write_copy tries to copy a string at a given (distance, length) to the
 /// output. This specialized version is optimized for short distances.
 ///
 /// This method is designed to be inlined for performance reasons.
@@ -179,7 +189,8 @@ fn slice_copy(dst : Slice[Byte], src : Slice[Byte]) -> Int {
   n
 }
 
-///| read_flush returns a slice of the historical buffer that is ready to be
+///|
+/// read_flush returns a slice of the historical buffer that is ready to be
 /// emitted to the user. The data returned by read_flush must be fully consumed
 /// before calling any other DictDecoder methods.
 fn read_flush(self : DictDecoder) -> Slice[Byte] {

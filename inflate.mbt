@@ -33,12 +33,14 @@ let max_num_dist = 30
 ///|
 let num_codes = 19 // number of codes in Huffman meta-code
 
-///| A corrupt_input_error reports the presence of corrupt input at a given offset.
+///|
+/// A corrupt_input_error reports the presence of corrupt input at a given offset.
 fn corrupt_input_error(v : Int64) -> IOError {
   IOError("flate: corrupt input before offset \{v}")
 }
 
-///| An internal_error reports an error in the flate code itself.
+///|
+/// An internal_error reports an error in the flate code itself.
 fn internal_error(s : String) -> IOError {
   IOError("flate: internal error: \{s}")
 }
@@ -89,7 +91,8 @@ fn HuffmanDecoder::new() -> HuffmanDecoder {
   { min: 0, chunks, links: [], link_mask: 0 }
 }
 
-///| Initialize Huffman decoding tables from array of code lengths.
+///|
+/// Initialize Huffman decoding tables from array of code lengths.
 /// Following this function, h is guaranteed to be initialized into a complete
 /// tree (i.e., neither over-subscribed nor under-subscribed). The exception is a
 /// degenerate case where the tree has only a single symbol with length 1. Empty
@@ -216,7 +219,8 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   true
 }
 
-///| The actual read interface needed by [Decompressor::new].
+///|
+/// The actual read interface needed by [Decompressor::new].
 pub(open) trait Reader {
   // @io.Reader
   read(Self, Slice[Byte]) -> (Int, IOError?)
@@ -291,13 +295,15 @@ priv enum StepState {
 ///|
 priv type StepFunc (Decompressor) -> Unit
 
-///| `Reader::new` returns a new [@io.ReadCloser] that can be used
+///|
+/// `Reader::new` returns a new [@io.ReadCloser] that can be used
 /// to read the uncompressed version of r.
 pub fn &Reader::new(r : &Reader) -> Decompressor {
   Decompressor::new(r, Slice::new([]))
 }
 
-///| `Reader::new_dict` is like [NewReader] but initializes the reader
+///|
+/// `Reader::new_dict` is like [NewReader] but initializes the reader
 /// with a preset dictionary. The returned [Reader] behaves as if
 /// the uncompressed data stream started with the given dictionary,
 /// which has already been read. NewReaderDict is typically used
@@ -535,7 +541,8 @@ fn read_huffman(self : Decompressor) -> IOError? {
   None
 }
 
-///| Decode a single Huffman block.
+///|
+/// Decode a single Huffman block.
 /// hl and hd are the Huffman states for the lit/length values
 /// and the distance values, respectively. If hd == nil, using the
 /// fixed distance encoding associated with fixed Huffman blocks.
@@ -546,7 +553,8 @@ fn huffman_block(self : Decompressor) -> Unit {
   }
 }
 
-///| read_literal:
+///|
+/// read_literal:
 /// Read literal and/or (length, distance) according to RFC section 3.2.3.
 fn read_literal(self : Decompressor) -> Unit {
   let (v, err) = self.huff_sym(self.hl.unwrap())
@@ -672,7 +680,8 @@ fn read_literal(self : Decompressor) -> Unit {
   self.copy_history()
 }
 
-///| copy_history:
+///|
+/// copy_history:
 /// Perform a backwards copy according to RFC section 3.2.3.
 fn copy_history(self : Decompressor) -> Unit {
   let mut cnt = self.dict.try_write_copy(self.copy_dist, self.copy_len)
@@ -691,7 +700,8 @@ fn copy_history(self : Decompressor) -> Unit {
   self.read_literal()
 }
 
-///| Copy a single uncompressed data block from input to output.
+///|
+/// Copy a single uncompressed data block from input to output.
 fn data_block(self : Decompressor) -> Unit {
   // Uncompressed.
   // Discard current half-byte.
@@ -723,7 +733,8 @@ fn data_block(self : Decompressor) -> Unit {
   self.copy_data()
 }
 
-///| copy_data copies f.copy_len bytes from the underlying reader into f.hist.
+///|
+/// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
 /// It pauses for reads when f.hist is full.
 fn copy_data(self : Decompressor) -> Unit {
   let mut buf = self.dict.write_slice()
@@ -762,7 +773,8 @@ fn finish_block(self : Decompressor) -> Unit {
   self.step = next_block
 }
 
-///| no_eof returns err, unless err == ioeof, in which case it returns @io.err_unexpected_eof.
+///|
+/// no_eof returns err, unless err == ioeof, in which case it returns @io.err_unexpected_eof.
 fn no_eof(e : IOError) -> IOError {
   if e == ioeof {
     return @io.err_unexpected_eof
@@ -783,7 +795,8 @@ fn more_bits(self : Decompressor) -> IOError? {
   None
 }
 
-///| Read the next Huffman-encoded symbol from f according to h.
+///|
+/// Read the next Huffman-encoded symbol from f according to h.
 fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
   // Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // with single element, huff_sym must error on these two edge cases. In both
