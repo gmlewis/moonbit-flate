@@ -1,5 +1,5 @@
 ///|
-fn partition[T](
+fn[T] partition(
   a : Slice[T],
   first : Int,
   last : Int,
@@ -27,7 +27,7 @@ fn partition[T](
 }
 
 ///|
-fn quicksort_helper[T](
+fn[T] quicksort_helper(
   a : Slice[T],
   first : Int,
   last : Int,
@@ -42,7 +42,7 @@ fn quicksort_helper[T](
 }
 
 ///|
-fn quicksort[T](a : Slice[T], less : (T, T) -> Bool) -> Unit {
+fn[T] quicksort(a : Slice[T], less : (T, T) -> Bool) -> Unit {
   quicksort_helper(a, 0, a.length() - 1, less)
 }
 
