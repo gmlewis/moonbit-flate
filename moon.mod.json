@@ -1,8 +1,8 @@
 {
   "name": "gmlewis/flate",
-  "version": "0.35.10",
+  "version": "0.35.11",
   "deps": {
-    "gmlewis/io": "0.22.3"
+    "gmlewis/io": "0.22.4"
   },
   "readme": "README.md",
   "repository": "https://github.com/gmlewis/moonbit-flate",

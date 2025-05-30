@@ -342,7 +342,6 @@ fn next_block(self : Decompressor) -> Unit {
   while self.nb < 1U + 2 {
     self.err = self.more_bits()
     guard self.err is None else { return }
-
   }
   self.final_flag = (self.b & 1) == 1
   self.b = self.b >> 1
@@ -613,7 +612,6 @@ fn read_literal(self : Decompressor) -> Unit {
     while self.nb < n {
       self.err = self.more_bits()
       guard self.err is None else { return }
-
     }
     let mask = (1U << n.reinterpret_as_int()) - 1
     length += (self.b & mask).reinterpret_as_int()
@@ -628,7 +626,6 @@ fn read_literal(self : Decompressor) -> Unit {
       while self.nb < 5 {
         self.err = self.more_bits()
         guard self.err is None else { return }
-
       }
       let to_rev = ((self.b & 0x1F) << 3).to_byte()
       dist = reverse8(to_rev).to_int()
@@ -658,7 +655,6 @@ fn read_literal(self : Decompressor) -> Unit {
     while self.nb < nb {
       self.err = self.more_bits()
       guard self.err is None else { return }
-
     }
     let mask = (1U << nb.reinterpret_as_int()) - 1
     extra = extra | (self.b & mask).reinterpret_as_int()

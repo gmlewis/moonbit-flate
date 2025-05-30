@@ -18,17 +18,13 @@ type DictWriter
 impl @io.Writer for DictWriter
 
 type Writer
-impl Writer {
-  new(&@io.Writer) -> Self
-  new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
-}
+fn Writer::new(&@io.Writer) -> Self
+fn Writer::new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
 impl @io.Closer for Writer
 impl @io.Writer for Writer
 
-impl Reader {
-  new(&Self) -> Decompressor
-  new_dict(&Self, @io.Slice[Byte]) -> Decompressor
-}
+fn Reader::new(&Self) -> Decompressor
+fn Reader::new_dict(&Self, @io.Slice[Byte]) -> Decompressor
 impl @io.ByteReader for &Reader
 impl @io.Reader for &Reader
 
