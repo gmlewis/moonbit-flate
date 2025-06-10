@@ -10,10 +10,10 @@
 // formats.
 
 ///|
-typealias Slice[T] = @io.Slice[T]
+typealias @io.Slice
 
 ///|
-typealias IOError = @io.IOError
+typealias @io.IOError
 
 ///|
 pub let ioeof : IOError = @io.eof
@@ -325,7 +325,7 @@ fn Decompressor::new(r : &Reader, dict : Slice[Byte]) -> Decompressor {
     codebits: Array::make(num_codes, 0),
     dict: DictDecoder::new(max_match_offset, dict),
     buf: [b'\x00', b'\x00', b'\x00', b'\x00'],
-    step: next_block,
+    step: Decompressor::next_block,
     step_state: StateInit,
     final_flag: false,
     err: None,
@@ -570,7 +570,7 @@ fn read_literal(self : Decompressor) -> Unit {
     self.dict.write_byte(v.to_byte())
     if self.dict.avail_write() == 0 {
       self.to_read = self.dict.read_flush()
-      self.step = huffman_block
+      self.step = Decompressor::huffman_block
       self.step_state = StateInit
       return
     }
@@ -689,7 +689,7 @@ fn copy_history(self : Decompressor) -> Unit {
   //
   if self.dict.avail_write() == 0 || self.copy_len > 0 {
     self.to_read = self.dict.read_flush()
-    self.step = huffman_block // We need to continue this work
+    self.step = Decompressor::huffman_block // We need to continue this work
     self.step_state = StateDict
     return
   }
@@ -752,7 +752,7 @@ fn copy_data(self : Decompressor) -> Unit {
   //
   if self.dict.avail_write() == 0 || self.copy_len > 0 {
     self.to_read = self.dict.read_flush()
-    self.step = copy_data
+    self.step = Decompressor::copy_data
     return
   }
   self.finish_block()
@@ -766,7 +766,7 @@ fn finish_block(self : Decompressor) -> Unit {
     }
     self.err = Some(ioeof)
   }
-  self.step = next_block
+  self.step = Decompressor::next_block
 }
 
 ///|
@@ -861,7 +861,7 @@ fn Decompressor::reset(
   self.h1 = HuffmanDecoder::new()
   self.h2 = HuffmanDecoder::new()
   self.dict = DictDecoder::new(max_match_offset, dict)
-  self.step = next_block
+  self.step = Decompressor::next_block
   self.step_state = StateInit
   self.final_flag = false
   self.err = None

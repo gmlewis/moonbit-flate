@@ -1,6 +1,6 @@
 {
   "name": "gmlewis/flate",
-  "version": "0.35.11",
+  "version": "0.35.12",
   "deps": {
     "gmlewis/io": "0.22.4"
   },
