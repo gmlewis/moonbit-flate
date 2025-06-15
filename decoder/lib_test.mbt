@@ -4,7 +4,7 @@
 ///|
 test "utf8" {
   @decoder.utf8([b'a', b'b', b'c'].iter()).collect()
-  |> inspect!(content="['a', 'b', 'c']")
+  |> inspect(content="['a', 'b', 'c']")
   @decoder.utf8([b'\xe2', b'\x99', b'\xa5'].iter()).collect()
-  |> inspect!(content="['♥']")
+  |> inspect(content="['♥']")
 }

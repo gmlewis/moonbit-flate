@@ -21,7 +21,7 @@ fn reverse16(x : UInt) -> UInt {
 ///|
 test "reverse16 works as expected" {
   let got = reverse16(32768)
-  inspect!(got, content="1")
+  inspect(got, content="1")
 }
 
 ///|

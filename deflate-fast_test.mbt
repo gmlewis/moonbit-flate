@@ -84,7 +84,7 @@ test "TestBestSpeed" {
       guard err is None else { abort("test #\{i}: @io.copy: \{err}") }
       try {
         let got = got.to_bytes()
-        assert_eq!(got, want)
+        assert_eq(got, want)
       } catch {
         _ => abort("test #\{i} FAILED")
       }

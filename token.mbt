@@ -89,7 +89,7 @@ fn offset(self : Token) -> UInt {
 test "offset behaves correctly" {
   let token = Token(2143289471U)
   let got = token.offset()
-  inspect!(got, content="127")
+  inspect(got, content="127")
 }
 
 ///|

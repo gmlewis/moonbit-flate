@@ -304,7 +304,7 @@ fn bytes2str(b : Bytes) -> String {
 ///|
 test "bytes2str works on simple case" {
   let got = bytes2str(b"simple case")
-  assert_eq!(got, "simple case")
+  assert_eq(got, "simple case")
 }
 
 ///|
@@ -316,5 +316,5 @@ fn str2bytes(s : String) -> Bytes {
 ///|
 test "str2bytes works on simple case" {
   let got = str2bytes("simple case")
-  assert_eq!(got, b"simple case")
+  assert_eq(got, b"simple case")
 }

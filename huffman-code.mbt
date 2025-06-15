@@ -283,7 +283,7 @@ fn reverse_bits(number : UInt, bit_length : Byte) -> UInt {
 ///|
 test "reverse_bits works" {
   let got = reverse_bits(64, b'\x07')
-  inspect!(got, content="1")
+  inspect(got, content="1")
 }
 
 ///|

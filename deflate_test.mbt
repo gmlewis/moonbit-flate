@@ -9,7 +9,7 @@
 typealias @io.Slice
 
 ///|
-type! TestError String derive(Show)
+suberror TestError String derive(Show)
 
 ///|
 test "writer dict" {
@@ -23,7 +23,7 @@ test "writer dict" {
   guard w.write(text) is (17, None)
   guard w.close() is None
   let want = b.to_bytes().to_array()
-  assert_eq!(38, want.length())
+  assert_eq(38, want.length())
 
   //
   let b1 = @io.Buffer::new()
@@ -33,7 +33,7 @@ test "writer dict" {
 
   //
   let got = b1.to_bytes().to_array()
-  assert_eq!(38, got.length())
+  assert_eq(38, got.length())
   if got != want {
     raise TestError("writer wrote \{got} want \{want}")
   }
