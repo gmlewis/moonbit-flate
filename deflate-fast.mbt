@@ -99,6 +99,7 @@ priv struct TableEntry {
 
 // DeflateFast maintains the table for matches,
 // and the previous byte block for cross block matching.
+
 ///|
 priv struct DeflateFast {
   table : FixedArray[TableEntry] // [table_size]TableEntry
@@ -117,6 +118,7 @@ fn DeflateFast::new() -> DeflateFast {
 
 // encode encodes a block given in src and appends tokens
 // to dst and returns the result.
+
 ///|
 fn encode(
   self : DeflateFast,
@@ -279,6 +281,7 @@ fn emit_literal(dst : Array[Token], lit : Slice[Byte]) -> Array[Token] {
 // match_len returns the match length between src[s:] and src[t:].
 // t can be negative to indicate the match is starting in self.prev.
 // We assume that src[s-4:s] and src[t-4:t] already match.
+
 ///|
 fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
   let mut s1 = s + max_match_length - 4
@@ -335,6 +338,7 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
 
 // Reset resets the encoding history.
 // This ensures that no matches are made to the previous block.
+
 ///|
 fn reset(self : DeflateFast) -> Unit {
   self.prev = Slice::new([])
@@ -352,6 +356,7 @@ fn reset(self : DeflateFast) -> Unit {
 // This is only called in rare situations to prevent integer overflow.
 //
 // See https://golang.org/issue/18636 and https://github.com/golang/go/issues/34121.
+
 ///|
 fn shift_offsets(self : DeflateFast) -> Unit {
   if self.prev.length() == 0 {

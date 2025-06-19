@@ -26,7 +26,7 @@ pub fn utf8(bytes : Iter[Byte]) -> Iter[Char] {
         } else {
           break IterEnd
         }
-      } else if (b >> 6) == 0b10 {
+      } else if b >> 6 == 0b10 {
         char = (char << 6) | (b & 0b111111)
         len -= 1
         if len == 0 {

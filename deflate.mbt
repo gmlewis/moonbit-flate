@@ -15,10 +15,12 @@ let window_size : Int = 1 << LOG_WINDOW_SIZE
 let window_mask : Int = window_size - 1
 
 // The smallest match length that the compressor actually emits
+
 ///|
 const MIN_MATCH_LENGTH = 4
 
 // The largest match length
+
 ///|
 const MAX_MATCH_LENGTH = 258
 
@@ -101,6 +103,7 @@ fn Compressor::new(buf : &@io.Writer) -> Compressor {
 // dictionary and calculate all hashes.
 // This is much faster than doing a full encode.
 // Should only be used after a reset.
+
 ///|
 fn fill_window(self : Compressor, b : Slice[Byte]) -> Unit {
   // if self.index != 0 || self.window_end != 0 {
@@ -194,6 +197,7 @@ const HASHMUL = 0x1e35a7bdU
 
 // bulk_hash4 will compute hashes using the same
 // algorithm as hash4.
+
 ///|
 fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt]) -> Unit {
   if b.length() < MIN_MATCH_LENGTH {
@@ -224,6 +228,7 @@ fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 // encSpeed will compress and store the currently added data,
 // if enough has been accumulated or we at the end of the stream.
 // Any error that occurred will be in self.err
+
 ///|
 fn enc_speed(self : Compressor) -> Unit {
   // We only compress if we have max_store_block_size.

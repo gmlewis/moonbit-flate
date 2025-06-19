@@ -20,6 +20,7 @@ pub fn Writer::new(buf : &@io.Writer) -> Writer {
 // any compressed output. The compressed data written to w
 // can only be decompressed by a [Reader] initialized with the
 // same dictionary.
+
 ///|
 pub fn Writer::new_dict(w : &@io.Writer, dict : Slice[Byte]) -> Writer {
   let dw = { w, }

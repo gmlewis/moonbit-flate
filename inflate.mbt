@@ -155,7 +155,7 @@ fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
   // Exception: To be compatible with zlib, we also need to
   // accept degenerate single-code codings. See also
   // TestDegenerateHuffmanCoding.
-  if code != (1 << max) && not(code == 1 && max == 1) {
+  if code != 1 << max && not(code == 1 && max == 1) {
     return false
   }
 
@@ -249,6 +249,7 @@ pub impl Reader for @io.Buffer with read_byte(self) {
 }
 
 // Decompress state.
+
 ///|
 struct Decompressor {
   // Input source.
@@ -395,7 +396,7 @@ pub impl @io.Reader for Decompressor with read(self, b) {
       Some(_) => return (0, self.err)
       _ => ()
     }
-    (self.step._)(self)
+    self.step.inner()(self)
     if None != self.err && self.to_read.length() == 0 {
       self.to_read = self.dict.read_flush() // Flush what's left in case of error
     }
@@ -844,12 +845,12 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
 }
 
 ///|
-fn make_reader(self : Decompressor, r : &Reader) -> Unit {
+pub fn make_reader(self : Decompressor, r : &Reader) -> Unit {
   self.r = r
 }
 
 ///|
-fn Decompressor::reset(
+pub fn Decompressor::reset(
   self : Decompressor,
   r : &Reader,
   dict : Slice[Byte]
