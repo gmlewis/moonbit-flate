@@ -95,7 +95,7 @@ let min_non_literal_block_size : Int = 1 + 1 + input_margin
 priv struct TableEntry {
   val : UInt // Value at destination
   mut offset : Int
-} derive(Show, Eq)
+}
 
 // DeflateFast maintains the table for matches,
 // and the previous byte block for cross block matching.
@@ -105,7 +105,7 @@ priv struct DeflateFast {
   table : FixedArray[TableEntry] // [table_size]TableEntry
   mut prev : Slice[Byte] // Previous block, zero length if unknown.
   mut cur : Int // Current match offset.
-} derive(Show, Eq)
+}
 
 ///|
 fn DeflateFast::new() -> DeflateFast {

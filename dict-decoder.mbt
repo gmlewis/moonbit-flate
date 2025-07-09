@@ -182,7 +182,7 @@ fn try_write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
 
 ///|
 fn slice_copy(dst : Slice[Byte], src : Slice[Byte]) -> Int {
-  let n = @math.minimum(dst.length(), src.length())
+  let n = @cmp.minimum(dst.length(), src.length())
   for i = 0; i < n; i = i + 1 {
     dst[i] = src[i]
   }

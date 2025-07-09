@@ -10,7 +10,7 @@ priv struct HuffmanEncoder {
   codes : Array[HCode]
   mut freqcache : Array[LiteralNode]
   bit_count : Array[Int] // [17]Int
-} derive(Show, Eq)
+}
 
 ///|
 fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
@@ -29,7 +29,7 @@ fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
 priv struct LiteralNode {
   literal : UInt // uint16
   freq : Int
-} derive(Show, Eq)
+}
 
 // HCode is a huffman code with a bit code and bit length.
 
@@ -37,7 +37,7 @@ priv struct LiteralNode {
 priv struct HCode {
   mut code : UInt
   mut len : UInt
-} derive(Show, Eq)
+}
 
 // A levelInfo describes the state of the constructed tree for a given depth.
 
