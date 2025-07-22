@@ -853,7 +853,7 @@ pub fn make_reader(self : Decompressor, r : &Reader) -> Unit {
 pub fn Decompressor::reset(
   self : Decompressor,
   r : &Reader,
-  dict : Slice[Byte]
+  dict : Slice[Byte],
 ) -> Unit {
   self.r = r
   self.roffset = 0

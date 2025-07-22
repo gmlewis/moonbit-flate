@@ -4,7 +4,7 @@ fn[T] partition(
   first : Int,
   last : Int,
   pivot_index : Int,
-  less : (T, T) -> Bool
+  less : (T, T) -> Bool,
 ) -> Int {
   a.swap(first, pivot_index) // move it to beginning
   let mut left = first + 1
@@ -31,7 +31,7 @@ fn[T] quicksort_helper(
   a : Slice[T],
   first : Int,
   last : Int,
-  less : (T, T) -> Bool
+  less : (T, T) -> Bool,
 ) -> Unit {
   if first >= last {
     return

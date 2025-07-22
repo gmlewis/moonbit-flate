@@ -123,7 +123,7 @@ fn DeflateFast::new() -> DeflateFast {
 fn encode(
   self : DeflateFast,
   dst : Array[Token],
-  src : Slice[Byte]
+  src : Slice[Byte],
 ) -> Array[Token] {
   let mut dst = dst
   // Ensure that self.cur doesn't wrap.

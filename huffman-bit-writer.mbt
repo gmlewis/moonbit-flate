@@ -245,7 +245,7 @@ fn generate_codegen(
   num_literals : Int,
   num_offsets : Int,
   lit_enc : HuffmanEncoder,
-  off_enc : HuffmanEncoder
+  off_enc : HuffmanEncoder,
 ) -> Unit {
   for i in 0..<self.codegen_freq.length() {
     self.codegen_freq[i] = 0
@@ -338,7 +338,7 @@ fn dynamic_size(
   self : HuffmanBitWriter,
   lit_enc : HuffmanEncoder,
   off_enc : HuffmanEncoder,
-  extra_bits : Int
+  extra_bits : Int,
 ) -> (Int, Int) {
   let mut num_codegens = self.codegen_freq.length()
   while num_codegens > 4 &&
@@ -427,7 +427,7 @@ fn write_dynamic_header(
   num_literals : Int,
   num_offsets : Int,
   num_codegens : Int,
-  is_eof : Bool
+  is_eof : Bool,
 ) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -478,7 +478,7 @@ fn write_dynamic_header(
 fn write_stored_header(
   self : HuffmanBitWriter,
   length : Int,
-  is_eof : Bool
+  is_eof : Bool,
 ) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -501,7 +501,7 @@ fn write_block_dynamic(
   self : HuffmanBitWriter,
   tokens : Array[Token],
   eof : Bool,
-  input : Slice[Byte]
+  input : Slice[Byte],
 ) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -601,7 +601,7 @@ fn write_tokens(
   self : HuffmanBitWriter,
   tokens : Array[Token],
   le_codes : Array[HCode],
-  oe_codes : Array[HCode]
+  oe_codes : Array[HCode],
 ) -> Unit {
   if not(self.err.is_empty()) {
     return
@@ -640,7 +640,7 @@ fn write_tokens(
 fn write_block_huff(
   self : HuffmanBitWriter,
   eof : Bool,
-  input : Slice[Byte]
+  input : Slice[Byte],
 ) -> Unit {
   if not(self.err.is_empty()) {
     return

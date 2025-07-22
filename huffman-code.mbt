@@ -112,7 +112,7 @@ let max_bits_limit = 16
 fn bit_counts(
   self : HuffmanEncoder,
   list : Slice[LiteralNode],
-  max_bits : Int
+  max_bits : Int,
 ) -> Slice[Int] {
   if max_bits >= max_bits_limit {
     abort("flate: max_bits too large")
@@ -250,7 +250,7 @@ fn bit_counts(
 fn assign_encoding_and_size(
   self : HuffmanEncoder,
   bit_count : Slice[Int],
-  list : Slice[LiteralNode]
+  list : Slice[LiteralNode],
 ) -> Unit {
   let mut list = list
   let mut code = 0
