@@ -10,6 +10,8 @@ let ioeof : @io.IOError
 
 let writer_closed_error : @io.IOError
 
+// Errors
+
 // Types and methods
 type Decompressor
 fn Decompressor::make_reader(Self, &Reader) -> Unit
