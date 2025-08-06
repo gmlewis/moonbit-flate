@@ -294,7 +294,7 @@ priv enum StepState {
 }
 
 ///|
-priv type StepFunc (Decompressor) -> Unit
+priv struct StepFunc((Decompressor) -> Unit)
 
 ///|
 /// `Reader::new` returns a new [@io.ReadCloser] that can be used
