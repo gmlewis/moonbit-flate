@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "gmlewis/flate/encoder"
+
+// Values
+fn utf8(Iter[Char]) -> Iter[Byte]
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
