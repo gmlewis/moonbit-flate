@@ -14,24 +14,24 @@ let writer_closed_error : @io.IOError
 
 // Types and methods
 type Decompressor
+fn Decompressor::close(Self) -> @io.IOError? // from trait `@io.Closer`
 fn Decompressor::make_reader(Self, &Reader) -> Unit
+fn Decompressor::read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?) // from trait `@io.Reader`
 fn Decompressor::reset(Self, &Reader, @io.Slice[Byte]) -> Unit
 impl @io.Closer for Decompressor
 impl @io.Reader for Decompressor
 
 type DictWriter
+fn DictWriter::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?) // from trait `@io.Writer`
 impl @io.Writer for DictWriter
 
 type Writer
+fn Writer::close(Self) -> @io.IOError? // from trait `@io.Closer`
 fn Writer::new(&@io.Writer) -> Self
 fn Writer::new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
+fn Writer::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?) // from trait `@io.Writer`
 impl @io.Closer for Writer
 impl @io.Writer for Writer
-
-fn Reader::new(&Self) -> Decompressor
-fn Reader::new_dict(&Self, @io.Slice[Byte]) -> Decompressor
-impl @io.ByteReader for &Reader
-impl @io.Reader for &Reader
 
 // Type aliases
 
@@ -41,4 +41,8 @@ pub(open) trait Reader {
   read_byte(Self) -> (Byte, @io.IOError?)
 }
 impl Reader for @io.Buffer
+fn &Reader::new(Self) -> Decompressor
+fn &Reader::new_dict(Self, @io.Slice[Byte]) -> Decompressor
+impl @io.ByteReader for &Reader
+impl @io.Reader for &Reader
 
