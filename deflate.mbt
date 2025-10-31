@@ -105,7 +105,7 @@ fn Compressor::new(buf : &@io.Writer) -> Compressor {
 // Should only be used after a reset.
 
 ///|
-fn fill_window(self : Compressor, b : Slice[Byte]) -> Unit {
+fn Compressor::fill_window(self : Compressor, b : Slice[Byte]) -> Unit {
   // if self.index != 0 || self.window_end != 0 {
   if self.window_end != 0 {
     abort("internal error: fill_window called with stale data")
@@ -154,7 +154,7 @@ fn fill_window(self : Compressor, b : Slice[Byte]) -> Unit {
 pub let writer_closed_error : @io.IOError = @io.IOError("writer closed")
 
 ///|
-fn close(self : Compressor) -> IOError? {
+fn Compressor::close(self : Compressor) -> IOError? {
   if Some(writer_closed_error) == self.err {
     return None
   }
@@ -183,7 +183,10 @@ fn close(self : Compressor) -> IOError? {
 }
 
 ///|
-fn write_stored_block(self : Compressor, buf : Slice[Byte]) -> IOError? {
+fn Compressor::write_stored_block(
+  self : Compressor,
+  buf : Slice[Byte],
+) -> IOError? {
   self.w.write_stored_header(buf.length(), false)
   if not(self.w.err.is_empty()) {
     return self.w.err
@@ -216,7 +219,7 @@ fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt]) -> Unit {
 }
 
 ///|
-fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
+fn Compressor::fill_store(self : Compressor, b : Slice[Byte]) -> Int {
   let n = minimum(self.window.length() - self.window_end, b.length())
   for i in 0..<n {
     self.window[self.window_end + i] = b[i]
@@ -230,7 +233,7 @@ fn fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 // Any error that occurred will be in self.err
 
 ///|
-fn enc_speed(self : Compressor) -> Unit {
+fn Compressor::enc_speed(self : Compressor) -> Unit {
   // We only compress if we have max_store_block_size.
   if self.window_end < max_store_block_size {
     if not(self.sync) {
@@ -271,7 +274,7 @@ fn enc_speed(self : Compressor) -> Unit {
 }
 
 ///|
-fn write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
+fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
   if not(self.err.is_empty()) {
     return (0, self.err)
   }

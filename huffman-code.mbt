@@ -69,7 +69,7 @@ fn LevelInfo::new() -> LevelInfo {
 // set sets the code and length of an hcode.
 
 ///|
-fn set(self : HCode, code : UInt, length : UInt) -> Unit {
+fn HCode::set(self : HCode, code : UInt, length : UInt) -> Unit {
   self.len = length
   self.code = code
 }
@@ -80,7 +80,7 @@ fn max_node() -> LiteralNode {
 }
 
 ///|
-fn bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
+fn HuffmanEncoder::bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
   let mut total = 0
   for i, f in freq {
     if f != 0 {
@@ -109,7 +109,7 @@ let max_bits_limit = 16
 // that should be encoded in i bits.
 
 ///|
-fn bit_counts(
+fn HuffmanEncoder::bit_counts(
   self : HuffmanEncoder,
   list : Slice[LiteralNode],
   max_bits : Int,
@@ -247,7 +247,7 @@ fn bit_counts(
 // in RFC 1951 3.2.2
 
 ///|
-fn assign_encoding_and_size(
+fn HuffmanEncoder::assign_encoding_and_size(
   self : HuffmanEncoder,
   bit_count : Slice[Int],
   list : Slice[LiteralNode],
@@ -292,7 +292,11 @@ test "reverse_bits works" {
 }
 
 ///|
-fn generate(self : HuffmanEncoder, freq : Slice[Int], max_bits : Int) -> Unit {
+fn HuffmanEncoder::generate(
+  self : HuffmanEncoder,
+  freq : Slice[Int],
+  max_bits : Int,
+) -> Unit {
   if self.freqcache.length() == 0 {
     // Allocate a reusable buffer with the longest possible frequency table.
     // Possible lengths are codegenCodeCount, offsetCodeCount and max_num_lit.

@@ -80,15 +80,15 @@ fn match_token(xlength : UInt, xoffset : UInt) -> Token {
 // Returns the literal of a literal token.
 
 ///|
-fn literal(self : Token) -> UInt {
-  self.inner() - literal_type
+fn Token::literal(self : Token) -> UInt {
+  self.0 - literal_type
 }
 
 // Returns the extra offset of a match token.
 
 ///|
-fn offset(self : Token) -> UInt {
-  self.inner() & offset_mask
+fn Token::offset(self : Token) -> UInt {
+  self.0 & offset_mask
 }
 
 ///|
@@ -99,8 +99,8 @@ test "offset behaves correctly" {
 }
 
 ///|
-fn length(self : Token) -> UInt {
-  (self.inner() - match_type) >> length_shift
+fn Token::length(self : Token) -> UInt {
+  (self.0 - match_type) >> length_shift
 }
 
 ///|

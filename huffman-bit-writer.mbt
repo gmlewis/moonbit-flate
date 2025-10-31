@@ -136,7 +136,7 @@ fn HuffmanBitWriter::new(writer : &@io.Writer) -> HuffmanBitWriter {
 }
 
 ///|
-fn flush(self : HuffmanBitWriter) -> Unit {
+fn HuffmanBitWriter::flush(self : HuffmanBitWriter) -> Unit {
   if not(self.err.is_empty()) {
     self.nbits = 0
     return
@@ -176,7 +176,11 @@ fn HuffmanBitWriter::write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
 }
 
 ///|
-fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
+fn HuffmanBitWriter::write_bits(
+  self : HuffmanBitWriter,
+  b : Int,
+  nb : UInt,
+) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
@@ -204,7 +208,10 @@ fn write_bits(self : HuffmanBitWriter, b : Int, nb : UInt) -> Unit {
 }
 
 ///|
-fn write_bytes(self : HuffmanBitWriter, bytes : Slice[Byte]) -> Unit {
+fn HuffmanBitWriter::write_bytes(
+  self : HuffmanBitWriter,
+  bytes : Slice[Byte],
+) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
@@ -240,7 +247,7 @@ fn write_bytes(self : HuffmanBitWriter, bytes : Slice[Byte]) -> Unit {
 //	litenc, offenc    The literal and offset encoder to use
 
 ///|
-fn generate_codegen(
+fn HuffmanBitWriter::generate_codegen(
   self : HuffmanBitWriter,
   num_literals : Int,
   num_offsets : Int,
@@ -334,7 +341,7 @@ fn generate_codegen(
 // dynamic_size returns the size of dynamically encoded data in bits.
 
 ///|
-fn dynamic_size(
+fn HuffmanBitWriter::dynamic_size(
   self : HuffmanBitWriter,
   lit_enc : HuffmanEncoder,
   off_enc : HuffmanEncoder,
@@ -386,7 +393,7 @@ fn stored_size(inp_length : Int) -> (Int, Bool) {
 }
 
 ///|
-fn write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
+fn HuffmanBitWriter::write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
   if not(self.err.is_empty()) {
     return
   }
@@ -422,7 +429,7 @@ fn write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
 //	num_codegens  The number of codegens used in codegen
 
 ///|
-fn write_dynamic_header(
+fn HuffmanBitWriter::write_dynamic_header(
   self : HuffmanBitWriter,
   num_literals : Int,
   num_offsets : Int,
@@ -475,7 +482,7 @@ fn write_dynamic_header(
 }
 
 ///|
-fn write_stored_header(
+fn HuffmanBitWriter::write_stored_header(
   self : HuffmanBitWriter,
   length : Int,
   is_eof : Bool,
@@ -497,7 +504,7 @@ fn write_stored_header(
 // input size the block is stored.
 
 ///|
-fn write_block_dynamic(
+fn HuffmanBitWriter::write_block_dynamic(
   self : HuffmanBitWriter,
   tokens : Array[Token],
   eof : Bool,
@@ -551,7 +558,10 @@ fn write_block_dynamic(
 // The number of literal and offset tokens is returned.
 
 ///|
-fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
+fn HuffmanBitWriter::index_tokens(
+  self : HuffmanBitWriter,
+  tokens : Array[Token],
+) -> (Int, Int) {
   for i in 0..<self.literal_freq.length() {
     self.literal_freq[i] = 0
   }
@@ -561,7 +571,7 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
 
   //
   for t in tokens {
-    if t.inner() < match_type {
+    if t.0 < match_type {
       self.literal_freq[t.literal().reinterpret_as_int()] += 1
       continue
     }
@@ -597,7 +607,7 @@ fn index_tokens(self : HuffmanBitWriter, tokens : Array[Token]) -> (Int, Int) {
 // codes for literal and offset encoding must be supplied.
 
 ///|
-fn write_tokens(
+fn HuffmanBitWriter::write_tokens(
   self : HuffmanBitWriter,
   tokens : Array[Token],
   le_codes : Array[HCode],
@@ -607,7 +617,7 @@ fn write_tokens(
     return
   }
   for t in tokens {
-    if t.inner() < match_type {
+    if t.0 < match_type {
       self.write_code(le_codes[t.literal().reinterpret_as_int()])
       continue
     }
@@ -637,7 +647,7 @@ fn write_tokens(
 // results only gains very little from compression.
 
 ///|
-fn write_block_huff(
+fn HuffmanBitWriter::write_block_huff(
   self : HuffmanBitWriter,
   eof : Bool,
   input : Slice[Byte],

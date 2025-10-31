@@ -120,7 +120,7 @@ fn DeflateFast::new() -> DeflateFast {
 // to dst and returns the result.
 
 ///|
-fn encode(
+fn DeflateFast::encode(
   self : DeflateFast,
   dst : Array[Token],
   src : Slice[Byte],
@@ -283,7 +283,12 @@ fn emit_literal(dst : Array[Token], lit : Slice[Byte]) -> Array[Token] {
 // We assume that src[s-4:s] and src[t-4:t] already match.
 
 ///|
-fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
+fn DeflateFast::match_len(
+  self : DeflateFast,
+  s : Int,
+  t : Int,
+  src : Slice[Byte],
+) -> Int {
   let mut s1 = s + max_match_length - 4
   if s1 > src.length() {
     s1 = src.length()
@@ -340,7 +345,7 @@ fn match_len(self : DeflateFast, s : Int, t : Int, src : Slice[Byte]) -> Int {
 // This ensures that no matches are made to the previous block.
 
 ///|
-fn reset(self : DeflateFast) -> Unit {
+fn DeflateFast::reset(self : DeflateFast) -> Unit {
   self.prev = Slice::new([])
   // Bump the offset, so all matches will fail distance check.
   // Nothing should be >= self.cur in the table.
@@ -358,7 +363,7 @@ fn reset(self : DeflateFast) -> Unit {
 // See https://golang.org/issue/18636 and https://github.com/golang/go/issues/34121.
 
 ///|
-fn shift_offsets(self : DeflateFast) -> Unit {
+fn DeflateFast::shift_offsets(self : DeflateFast) -> Unit {
   if self.prev.length() == 0 {
     // We have no history; just clear the table.
     for i = 0; i < table_size; i = i + 1 {

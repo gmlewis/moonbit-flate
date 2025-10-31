@@ -10,10 +10,10 @@
 // formats.
 
 ///|
-typealias @io.Slice
+using @io {type Slice}
 
 ///|
-typealias @io.IOError
+using @io {type IOError}
 
 ///|
 pub let ioeof : IOError = @io.eof
@@ -97,7 +97,10 @@ fn HuffmanDecoder::new() -> HuffmanDecoder {
 /// tree (i.e., neither over-subscribed nor under-subscribed). The exception is a
 /// degenerate case where the tree has only a single symbol with length 1. Empty
 /// trees are permitted.
-fn initialize(self : HuffmanDecoder, lengths : Slice[Int]) -> Bool {
+fn HuffmanDecoder::initialize(
+  self : HuffmanDecoder,
+  lengths : Slice[Int],
+) -> Bool {
 
   // Sanity enables additional runtime tests during Huffman
   // table construction. It's intended to be used during
@@ -339,7 +342,7 @@ fn Decompressor::new(r : &Reader, dict : Slice[Byte]) -> Decompressor {
 }
 
 ///|
-fn next_block(self : Decompressor) -> Unit {
+fn Decompressor::next_block(self : Decompressor) -> Unit {
   while self.nb < 1U + 2 {
     self.err = self.more_bits()
     guard self.err is None else { return }
@@ -396,7 +399,7 @@ pub impl @io.Reader for Decompressor with read(self, b) {
       Some(_) => return (0, self.err)
       _ => ()
     }
-    self.step.inner()(self)
+    (self.step.0)(self)
     if None != self.err && self.to_read.length() == 0 {
       self.to_read = self.dict.read_flush() // Flush what's left in case of error
     }
@@ -420,7 +423,7 @@ let code_order = [
 ]
 
 ///|
-fn read_huffman(self : Decompressor) -> IOError? {
+fn Decompressor::read_huffman(self : Decompressor) -> IOError? {
   // HLIT[5], HDIST[5], HCLEN[4].
   while self.nb < 5U + 5 + 4 {
     match self.more_bits() {
@@ -546,7 +549,7 @@ fn read_huffman(self : Decompressor) -> IOError? {
 /// hl and hd are the Huffman states for the lit/length values
 /// and the distance values, respectively. If hd == nil, using the
 /// fixed distance encoding associated with fixed Huffman blocks.
-fn huffman_block(self : Decompressor) -> Unit {
+fn Decompressor::huffman_block(self : Decompressor) -> Unit {
   match self.step_state {
     StateInit => self.read_literal()
     StateDict => self.copy_history()
@@ -556,7 +559,7 @@ fn huffman_block(self : Decompressor) -> Unit {
 ///|
 /// read_literal:
 /// Read literal and/or (length, distance) according to RFC section 3.2.3.
-fn read_literal(self : Decompressor) -> Unit {
+fn Decompressor::read_literal(self : Decompressor) -> Unit {
   let (v, err) = self.huff_sym(self.hl.unwrap())
   match err {
     Some(err) => {
@@ -680,7 +683,7 @@ fn read_literal(self : Decompressor) -> Unit {
 ///|
 /// copy_history:
 /// Perform a backwards copy according to RFC section 3.2.3.
-fn copy_history(self : Decompressor) -> Unit {
+fn Decompressor::copy_history(self : Decompressor) -> Unit {
   let mut cnt = self.dict.try_write_copy(self.copy_dist, self.copy_len)
   if cnt == 0 {
     cnt = self.dict.write_copy(self.copy_dist, self.copy_len)
@@ -699,7 +702,7 @@ fn copy_history(self : Decompressor) -> Unit {
 
 ///|
 /// Copy a single uncompressed data block from input to output.
-fn data_block(self : Decompressor) -> Unit {
+fn Decompressor::data_block(self : Decompressor) -> Unit {
   // Uncompressed.
   // Discard current half-byte.
   self.nb = 0
@@ -733,7 +736,7 @@ fn data_block(self : Decompressor) -> Unit {
 ///|
 /// copy_data copies f.copy_len bytes from the underlying reader into f.hist.
 /// It pauses for reads when f.hist is full.
-fn copy_data(self : Decompressor) -> Unit {
+fn Decompressor::copy_data(self : Decompressor) -> Unit {
   let mut buf = self.dict.write_slice()
   if buf.length() > self.copy_len {
     buf = buf[:self.copy_len]
@@ -760,7 +763,7 @@ fn copy_data(self : Decompressor) -> Unit {
 }
 
 ///|
-fn finish_block(self : Decompressor) -> Unit {
+fn Decompressor::finish_block(self : Decompressor) -> Unit {
   if self.final_flag {
     if self.dict.avail_read() > 0 {
       self.to_read = self.dict.read_flush()
@@ -780,7 +783,7 @@ fn no_eof(e : IOError) -> IOError {
 }
 
 ///|
-fn more_bits(self : Decompressor) -> IOError? {
+fn Decompressor::more_bits(self : Decompressor) -> IOError? {
   let (c, err) = self.r.read_byte()
   match err {
     Some(_) => return err
@@ -794,7 +797,10 @@ fn more_bits(self : Decompressor) -> IOError? {
 
 ///|
 /// Read the next Huffman-encoded symbol from f according to h.
-fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
+fn Decompressor::huff_sym(
+  self : Decompressor,
+  h : HuffmanDecoder,
+) -> (Int, IOError?) {
   // Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // with single element, huff_sym must error on these two edge cases. In both
   // cases, the chunks slice will be 0 for the invalid sequence, leading it
@@ -845,7 +851,7 @@ fn huff_sym(self : Decompressor, h : HuffmanDecoder) -> (Int, IOError?) {
 }
 
 ///|
-pub fn make_reader(self : Decompressor, r : &Reader) -> Unit {
+pub fn Decompressor::make_reader(self : Decompressor, r : &Reader) -> Unit {
   self.r = r
 }
 

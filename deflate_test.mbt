@@ -6,7 +6,7 @@
 // license that can be found in the LICENSE file.
 
 ///|
-typealias @io.Slice
+using @io {type Slice}
 
 ///|
 suberror TestError String derive(Show)
