@@ -56,7 +56,7 @@ test "TestBestSpeed" {
         // TODO: Changing from Bytes to FixedArray[Byte] hurts performance.
         let subset = FixedArray::make(n, b'\x00')
         subset.unsafe_blit(0, abcabc, 0, n)
-        let subset = Bytes::from_fixedarray(subset)
+        let subset = Bytes::from_array(subset)
         let (_, err) = want.write_bytes(subset)
         guard err is None else {
           abort(
