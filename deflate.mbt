@@ -188,7 +188,7 @@ fn Compressor::write_stored_block(
   buf : Slice[Byte],
 ) -> IOError? {
   self.w.write_stored_header(buf.length(), false)
-  if not(self.w.err.is_empty()) {
+  if not(self.w.err is None) {
     return self.w.err
   }
   self.w.write_bytes(buf)
@@ -275,7 +275,7 @@ fn Compressor::enc_speed(self : Compressor) -> Unit {
 
 ///|
 fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
-  if not(self.err.is_empty()) {
+  if not(self.err is None) {
     return (0, self.err)
   }
   let mut b : Slice[Byte] = Slice::new(Array::from_iter(b.iter()))
@@ -283,7 +283,7 @@ fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
   while b.length() > 0 {
     self.enc_speed()
     b = b[self.fill_store(b):]
-    if not(self.err.is_empty()) {
+    if not(self.err is None) {
       return (0, self.err)
     }
   }
