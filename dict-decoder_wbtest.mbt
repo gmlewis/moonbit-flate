@@ -254,7 +254,7 @@ test "DictDecoder" {
   //
   want.write_string(poem)
   write_copy(dd.hist_size(), 33)
-  want.write_substring(want.contents().to_unchecked_string(), 0, 33)
+  want.write_view(want.contents().to_unchecked_string()[0:33])
 
   //
   write_string(abc)
@@ -279,7 +279,7 @@ test "DictDecoder" {
   //
   write_copy(dd.hist_size(), 10)
   let to_drop = want.contents().to_unchecked_string().length() - dd.hist_size()
-  want.write_substring(want.contents().to_unchecked_string(), to_drop, 10)
+  want.write_view(want.contents().to_unchecked_string()[to_drop:to_drop + 10])
 
   //
   got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
