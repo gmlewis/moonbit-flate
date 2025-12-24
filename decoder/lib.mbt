@@ -2,18 +2,19 @@
 // SPDX-License-Identifier: MIT
 
 ///|
-pub fn utf8(bytes : Iter[Byte]) -> Iter[Char] {
-  Iter::new(fn(f) {
-    let mut len = 0
-    let mut char = 0
-    for byte in bytes {
+pub fn utf8(bytes : Iterator[Byte]) -> Iterator[Char] {
+  let mut len = 0
+  let mut char = 0
+  Iterator::new(fn() -> Char? {
+    while true {
+      guard bytes.next() is Some(byte) else { return None }
       let b = byte.to_int()
       if len == 0 {
-        if b < 0b1100_0000 {
-          match f(Int::unsafe_to_char((char << 6) | b)) {
-            IterEnd => break IterEnd
-            IterContinue => continue
-          }
+        if b < 0b1000_0000 {
+          return Some(Int::unsafe_to_char(b))
+        } else if b < 0b1100_0000 {
+          // invalid
+          return None
         } else if b < 0b1110_0000 {
           char = b & 0b11111
           len = 1
@@ -24,25 +25,21 @@ pub fn utf8(bytes : Iter[Byte]) -> Iter[Char] {
           char = b & 0b111
           len = 3
         } else {
-          break IterEnd
+          // invalid
+          return None
         }
       } else if b >> 6 == 0b10 {
         char = (char << 6) | (b & 0b111111)
         len -= 1
         if len == 0 {
-          match f(Int::unsafe_to_char(char)) {
-            IterEnd => break IterEnd
-            IterContinue => {
-              char = 0
-              continue
-            }
-          }
+          return Some(Int::unsafe_to_char(char))
         }
       } else {
-        break IterEnd
+        // invalid
+        return None
       }
     } else {
-      IterContinue
+      None
     }
   })
 }
