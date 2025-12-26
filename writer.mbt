@@ -43,8 +43,7 @@ pub impl @io.Writer for DictWriter with write(self, b) {
 ///|
 /// `write` writes the provided data to the flate Writer.
 pub impl @io.Writer for Writer with write(self, data) {
-  let data = Array::from_iter(data.iter()) // unfortunate copy
-  self.d.write(Slice::new(data))
+  self.d.write(data)
 }
 
 ///|

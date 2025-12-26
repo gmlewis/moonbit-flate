@@ -257,7 +257,10 @@ fn Compressor::enc_speed(self : Compressor) -> Unit {
     }
   }
   // Encode the block.
-  self.tokens = self.best_speed.encode([], self.window[:self.window_end])
+  self.tokens = self.best_speed.encode(
+    Array::new(capacity=self.window_end),
+    self.window[:self.window_end],
+  )
 
   // If we removed less than 1/16th, Huffman compress the block.
   if self.tokens.length() > self.window_end - (self.window_end >> 4) {
@@ -278,7 +281,7 @@ fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
   if not(self.err is None) {
     return (0, self.err)
   }
-  let mut b : Slice[Byte] = Slice::new(Array::from_iter(b.iter()))
+  let mut b = b
   let n = b.length()
   while b.length() > 0 {
     self.enc_speed()

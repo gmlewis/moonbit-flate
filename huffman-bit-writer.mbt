@@ -167,15 +167,6 @@ fn HuffmanBitWriter::write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
 }
 
 ///|
-fn HuffmanBitWriter::write_byte(self : HuffmanBitWriter, b : Byte) -> Unit {
-  if not(self.err is None) {
-    return
-  }
-  let (_, err) = self.writer.write(Slice::new([b]))
-  self.err = err
-}
-
-///|
 fn HuffmanBitWriter::write_bits(
   self : HuffmanBitWriter,
   b : Int,
@@ -413,9 +404,7 @@ fn HuffmanBitWriter::write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
     self.bytes[n + 5] = (bits >> 40).to_byte()
     n += 6
     if n >= buffer_flush_size {
-      for i in 0..<n {
-        self.write_byte(self.bytes[i])
-      }
+      self.write(Slice::new(self.bytes)[:n])
       n = 0
     }
     self.nbytes = n
@@ -603,9 +592,6 @@ fn HuffmanBitWriter::index_tokens(
   (num_literals, num_offsets)
 }
 
-// write_tokens writes a slice of tokens to the output.
-// codes for literal and offset encoding must be supplied.
-
 ///|
 fn HuffmanBitWriter::write_tokens(
   self : HuffmanBitWriter,
@@ -616,30 +602,132 @@ fn HuffmanBitWriter::write_tokens(
   if not(self.err is None) {
     return
   }
+  let mut bits = self.bits
+  let mut nbits = self.nbits
+  let mut nbytes = self.nbytes
   for t in tokens {
     if t.0 < match_type {
-      self.write_code(le_codes[t.literal().reinterpret_as_int()])
-      continue
+      let c = le_codes[t.literal().reinterpret_as_int()]
+      bits = bits | (c.code.to_uint64() << nbits.reinterpret_as_int())
+      nbits = nbits + c.len
+    } else {
+      // Write the length
+      let length = t.length()
+      let length_code = length_code(length)
+      let c = le_codes[length_code + length_codes_start]
+      bits = bits | (c.code.to_uint64() << nbits.reinterpret_as_int())
+      nbits = nbits + c.len
+      if nbits >= 48 {
+        self.bytes[nbytes + 0] = bits.to_byte()
+        self.bytes[nbytes + 1] = (bits >> 8).to_byte()
+        self.bytes[nbytes + 2] = (bits >> 16).to_byte()
+        self.bytes[nbytes + 3] = (bits >> 24).to_byte()
+        self.bytes[nbytes + 4] = (bits >> 32).to_byte()
+        self.bytes[nbytes + 5] = (bits >> 40).to_byte()
+        bits = bits >> 48
+        nbits = nbits - 48
+        nbytes = nbytes + 6
+        if nbytes >= buffer_flush_size {
+          self.bits = bits
+          self.nbits = nbits
+          self.write(Slice::new(self.bytes)[:nbytes])
+          if not(self.err is None) {
+            return
+          }
+          nbytes = 0
+        }
+      }
+      let extra_length_bits = length_extra_bits[length_code].reinterpret_as_uint()
+      if extra_length_bits > 0 {
+        let extra_length = (length - length_base[length_code]).reinterpret_as_int()
+        bits = bits |
+          (
+            extra_length.reinterpret_as_uint().to_uint64() <<
+            nbits.reinterpret_as_int()
+          )
+        nbits = nbits + extra_length_bits
+      }
+      if nbits >= 48 {
+        self.bytes[nbytes + 0] = bits.to_byte()
+        self.bytes[nbytes + 1] = (bits >> 8).to_byte()
+        self.bytes[nbytes + 2] = (bits >> 16).to_byte()
+        self.bytes[nbytes + 3] = (bits >> 24).to_byte()
+        self.bytes[nbytes + 4] = (bits >> 32).to_byte()
+        self.bytes[nbytes + 5] = (bits >> 40).to_byte()
+        bits = bits >> 48
+        nbits = nbits - 48
+        nbytes = nbytes + 6
+        if nbytes >= buffer_flush_size {
+          self.bits = bits
+          self.nbits = nbits
+          self.write(Slice::new(self.bytes)[:nbytes])
+          if not(self.err is None) {
+            return
+          }
+          nbytes = 0
+        }
+      }
+      // Write the offset
+      let offset = t.offset()
+      let offset_code = offset_code(offset)
+      let c = oe_codes[offset_code]
+      bits = bits | (c.code.to_uint64() << nbits.reinterpret_as_int())
+      nbits = nbits + c.len
+      if nbits >= 48 {
+        self.bytes[nbytes + 0] = bits.to_byte()
+        self.bytes[nbytes + 1] = (bits >> 8).to_byte()
+        self.bytes[nbytes + 2] = (bits >> 16).to_byte()
+        self.bytes[nbytes + 3] = (bits >> 24).to_byte()
+        self.bytes[nbytes + 4] = (bits >> 32).to_byte()
+        self.bytes[nbytes + 5] = (bits >> 40).to_byte()
+        bits = bits >> 48
+        nbits = nbits - 48
+        nbytes = nbytes + 6
+        if nbytes >= buffer_flush_size {
+          self.bits = bits
+          self.nbits = nbits
+          self.write(Slice::new(self.bytes)[:nbytes])
+          if not(self.err is None) {
+            return
+          }
+          nbytes = 0
+        }
+      }
+      let extra_offset_bits = offset_extra_bits[offset_code].reinterpret_as_uint()
+      if extra_offset_bits > 0 {
+        let extra_offset = (offset - offset_base[offset_code]).reinterpret_as_int()
+        bits = bits |
+          (
+            extra_offset.reinterpret_as_uint().to_uint64() <<
+            nbits.reinterpret_as_int()
+          )
+        nbits = nbits + extra_offset_bits
+      }
     }
-    // Write the length
-    let length = t.length()
-    let length_code = length_code(length)
-    self.write_code(le_codes[length_code + length_codes_start])
-    let extra_length_bits = length_extra_bits[length_code].reinterpret_as_uint()
-    if extra_length_bits > 0 {
-      let extra_length = (length - length_base[length_code]).reinterpret_as_int()
-      self.write_bits(extra_length, extra_length_bits)
-    }
-    // Write the offset
-    let offset = t.offset()
-    let offset_code = offset_code(offset)
-    self.write_code(oe_codes[offset_code])
-    let extra_offset_bits = offset_extra_bits[offset_code].reinterpret_as_uint()
-    if extra_offset_bits > 0 {
-      let extra_offset = (offset - offset_base[offset_code]).reinterpret_as_int()
-      self.write_bits(extra_offset, extra_offset_bits)
+    if nbits >= 48 {
+      self.bytes[nbytes + 0] = bits.to_byte()
+      self.bytes[nbytes + 1] = (bits >> 8).to_byte()
+      self.bytes[nbytes + 2] = (bits >> 16).to_byte()
+      self.bytes[nbytes + 3] = (bits >> 24).to_byte()
+      self.bytes[nbytes + 4] = (bits >> 32).to_byte()
+      self.bytes[nbytes + 5] = (bits >> 40).to_byte()
+      bits = bits >> 48
+      nbits = nbits - 48
+      nbytes = nbytes + 6
+      if nbytes >= buffer_flush_size {
+        self.bits = bits
+        self.nbits = nbits
+        self.write(Slice::new(self.bytes)[:nbytes])
+        if not(self.err is None) {
+          return
+        }
+        nbytes = 0
+      }
     }
   }
+  self.bits = bits
+  self.nbits = nbits
+  self.nbytes = nbytes
 }
 
 // write_block_huff encodes a block of bytes as either
@@ -698,35 +786,39 @@ fn HuffmanBitWriter::write_block_huff(
   // Huffman.
   self.write_dynamic_header(num_literals, num_offsets, num_codegens, eof)
   let encoding = self.literal_encoding.codes[:257]
+  let mut bits = self.bits
+  let mut nbits = self.nbits
   let mut n = self.nbytes
   for t in input {
     let c = encoding[t.to_int()]
-    self.bits = self.bits |
-      (c.code.to_uint64() << self.nbits.reinterpret_as_int())
-    self.nbits += c.len
-    if self.nbits < 48 {
+    bits = bits | (c.code.to_uint64() << nbits.reinterpret_as_int())
+    nbits = nbits + c.len
+    if nbits < 48 {
       continue
     }
     // Store 6 bytes
-    let bits = self.bits
-    self.bits = self.bits >> 48
-    self.nbits -= 48
     self.bytes[n + 0] = bits.to_byte()
     self.bytes[n + 1] = (bits >> 8).to_byte()
     self.bytes[n + 2] = (bits >> 16).to_byte()
     self.bytes[n + 3] = (bits >> 24).to_byte()
     self.bytes[n + 4] = (bits >> 32).to_byte()
     self.bytes[n + 5] = (bits >> 40).to_byte()
+    bits = bits >> 48
+    nbits = nbits - 48
     n += 6
     if n < buffer_flush_size {
       continue
     }
+    self.bits = bits
+    self.nbits = nbits
     self.write(Slice::new(self.bytes)[:n])
     if not(self.err is None) {
       return // Return early in the event of write failures
     }
     n = 0
   }
+  self.bits = bits
+  self.nbits = nbits
   self.nbytes = n
   self.write_code(encoding[end_block_marker])
 }
