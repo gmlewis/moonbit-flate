@@ -2,7 +2,7 @@
 package "gmlewis/flate/encoder"
 
 // Values
-pub fn utf8(Iterator[Char]) -> Iterator[Byte]
+pub fn utf8(Iter[Char]) -> Iter[Byte]
 
 // Errors
 

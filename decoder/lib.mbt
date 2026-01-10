@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 ///|
-pub fn utf8(bytes : Iterator[Byte]) -> Iterator[Char] {
+pub fn utf8(bytes : Iter[Byte]) -> Iter[Char] {
   let mut len = 0
   let mut char = 0
-  Iterator::new(fn() -> Char? {
+  Iter::new(fn() -> Char? {
     while true {
       guard bytes.next() is Some(byte) else { return None }
       let b = byte.to_int()

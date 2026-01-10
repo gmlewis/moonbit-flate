@@ -293,7 +293,7 @@ test "DictDecoder" {
 ///|
 /// `bytes2str` decodes a UTF-8 `Bytes` to a UTF-16 `String`.
 fn bytes2str(b : Bytes) -> String {
-  let chars = (b.iterator() |> @decoder.utf8()).collect()
+  let chars = (b.iter() |> @decoder.utf8()).collect()
   let buf = @buffer.new(size_hint=chars.length())
   for ch in chars {
     buf.write_char(ch)
@@ -310,7 +310,7 @@ test "bytes2str works on simple case" {
 ///|
 /// `str2bytes` encodes a UTF-16 `String` as a UTF-8 `Bytes`.
 fn str2bytes(s : String) -> Bytes {
-  s.iterator() |> @encoder.utf8() |> Bytes::from_iterator()
+  s.iter() |> @encoder.utf8() |> Bytes::from_iter()
 }
 
 ///|

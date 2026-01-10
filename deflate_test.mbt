@@ -9,7 +9,9 @@
 using @io {type Slice}
 
 ///|
-suberror TestError String derive(Show)
+suberror TestError {
+  TestError(String)
+} derive(Show)
 
 ///|
 test "writer dict" {

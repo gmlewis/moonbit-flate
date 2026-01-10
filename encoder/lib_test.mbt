@@ -36,7 +36,7 @@ test "utf8" {
   let mut failed = false
   let mut output = ""
   for tt in tests {
-    let result = @encoder.utf8(tt.input.iterator()).collect()
+    let result = @encoder.utf8(tt.input.iter()).collect()
     if result != tt.expected {
       output = "Test \{tt.name} failed: expected \{tt.expected}, got \{result}"
       failed = true
