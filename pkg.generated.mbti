@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "gmlewis/flate"
 
-import(
-  "gmlewis/io"
-)
+import {
+  "gmlewis/io",
+}
 
 // Values
 pub let ioeof : @io.IOError
