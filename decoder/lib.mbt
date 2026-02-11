@@ -38,7 +38,7 @@ pub fn utf8(bytes : Iter[Byte]) -> Iter[Char] {
         // invalid
         return None
       }
-    } else {
+    } nobreak {
       None
     }
   })
