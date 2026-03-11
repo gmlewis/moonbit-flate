@@ -445,7 +445,7 @@ fn HuffmanBitWriter::write_dynamic_header(
 
   //
   let mut i = 0
-  for {
+  for ;; {
     let code_word = self.codegen[i]
     i += 1
     if code_word == bad_code {

@@ -159,7 +159,7 @@ fn DeflateFast::encode(
   }
 
   //
-  for {
+  for ;; {
     // Copied from the C++ snappy implementation:
     //
     // Heuristic match skipping: If 32 bytes are scanned with no matches
@@ -180,7 +180,7 @@ fn DeflateFast::encode(
     let mut candidate : TableEntry = { val: 0U, offset: 0 }
 
     //
-    for {
+    for ;; {
       s = next_s
       let bytes_between_hash_lookups = skip >> 5
       next_s = s + bytes_between_hash_lookups
@@ -214,7 +214,7 @@ fn DeflateFast::encode(
     // though we don't yet know how big the literal will be. We handle that
     // by proceeding to the next iteration of the main loop. We also can
     // exit this loop via goto if we get close to exhausting the input.
-    for {
+    for ;; {
       // Invariant: we have a 4-byte match at s, and no need to emit any
       // literal bytes prior to s.
 

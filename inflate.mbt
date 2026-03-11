@@ -380,7 +380,7 @@ fn Decompressor::next_block(self : Decompressor) -> Unit {
 
 ///|
 pub impl @io.Reader for Decompressor with read(self, b) {
-  for {
+  for ;; {
     if self.to_read.length() > 0 {
       let mut n = self.to_read.length()
       if b.length() < n {
@@ -413,6 +413,9 @@ pub impl @io.Closer for Decompressor with close(self) {
   }
   self.err
 }
+
+///|
+pub impl @io.ReadCloser for Decompressor
 
 // RFC 1951 section 3.2.7.
 // Compression with dynamic Huffman codes
@@ -811,7 +814,7 @@ fn Decompressor::huff_sym(
   // inline call to more_bits and reassign b,nb back to f on return.
   let mut nb = self.nb
   let mut b = self.b
-  for {
+  for ;; {
     while nb < n {
       let (c, err) = self.r.read_byte()
       match err {

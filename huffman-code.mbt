@@ -169,7 +169,7 @@ fn HuffmanEncoder::bit_counts(
 
   //
   let mut level = max_bits
-  for {
+  for ;; {
     if levels[level].next_pair_freq == @int.max_value &&
       levels[level].next_char_freq == @int.max_value {
       // We've run out of both leafs and pairs.

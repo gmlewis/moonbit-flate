@@ -17,6 +17,7 @@ type Decompressor
 pub fn Decompressor::make_reader(Self, &Reader) -> Unit
 pub fn Decompressor::reset(Self, &Reader, @io.Slice[Byte]) -> Unit
 pub impl @io.Closer for Decompressor
+pub impl @io.ReadCloser for Decompressor
 pub impl @io.Reader for Decompressor
 
 type DictWriter
@@ -26,6 +27,7 @@ type Writer
 pub fn Writer::new(&@io.Writer) -> Self
 pub fn Writer::new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
 pub impl @io.Closer for Writer
+pub impl @io.WriteCloser for Writer
 pub impl @io.Writer for Writer
 
 // Type aliases

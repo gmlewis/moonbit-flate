@@ -53,3 +53,6 @@ pub impl @io.Writer for Writer with write(self, data) {
 pub impl @io.Closer for Writer with close(self) {
   self.d.close()
 }
+
+///|
+pub impl @io.WriteCloser for Writer
