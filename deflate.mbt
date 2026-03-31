@@ -188,7 +188,7 @@ fn Compressor::write_stored_block(
   buf : Slice[Byte],
 ) -> IOError? {
   self.w.write_stored_header(buf.length(), false)
-  if not(self.w.err is None) {
+  if !(self.w.err is None) {
     return self.w.err
   }
   self.w.write_bytes(buf)
@@ -236,7 +236,7 @@ fn Compressor::fill_store(self : Compressor, b : Slice[Byte]) -> Int {
 fn Compressor::enc_speed(self : Compressor) -> Unit {
   // We only compress if we have max_store_block_size.
   if self.window_end < max_store_block_size {
-    if not(self.sync) {
+    if !self.sync {
       return
     }
 
@@ -278,7 +278,7 @@ fn Compressor::enc_speed(self : Compressor) -> Unit {
 
 ///|
 fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return (0, self.err)
   }
   let mut b = b
@@ -286,7 +286,7 @@ fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
   while b.length() > 0 {
     self.enc_speed()
     b = b[self.fill_store(b):]
-    if not(self.err is None) {
+    if !(self.err is None) {
       return (0, self.err)
     }
   }

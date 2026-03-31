@@ -137,7 +137,7 @@ fn HuffmanBitWriter::new(writer : &@io.Writer) -> HuffmanBitWriter {
 
 ///|
 fn HuffmanBitWriter::flush(self : HuffmanBitWriter) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     self.nbits = 0
     return
   }
@@ -159,7 +159,7 @@ fn HuffmanBitWriter::flush(self : HuffmanBitWriter) -> Unit {
 
 ///|
 fn HuffmanBitWriter::write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   let (_, err) = self.writer.write(b)
@@ -172,7 +172,7 @@ fn HuffmanBitWriter::write_bits(
   b : Int,
   nb : UInt,
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   self.bits = self.bits |
@@ -203,7 +203,7 @@ fn HuffmanBitWriter::write_bytes(
   self : HuffmanBitWriter,
   bytes : Slice[Byte],
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   let mut n = self.nbytes
@@ -385,7 +385,7 @@ fn stored_size(inp_length : Int) -> (Int, Bool) {
 
 ///|
 fn HuffmanBitWriter::write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   self.bits = self.bits |
@@ -425,7 +425,7 @@ fn HuffmanBitWriter::write_dynamic_header(
   num_codegens : Int,
   is_eof : Bool,
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   let mut first_bits = 4
@@ -476,7 +476,7 @@ fn HuffmanBitWriter::write_stored_header(
   length : Int,
   is_eof : Bool,
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   let flag = if is_eof { 1 } else { 0 }
@@ -499,7 +499,7 @@ fn HuffmanBitWriter::write_block_dynamic(
   eof : Bool,
   input : Slice[Byte],
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
 
@@ -599,7 +599,7 @@ fn HuffmanBitWriter::write_tokens(
   le_codes : Array[HCode],
   oe_codes : Array[HCode],
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
   let mut bits = self.bits
@@ -631,7 +631,7 @@ fn HuffmanBitWriter::write_tokens(
           self.bits = bits
           self.nbits = nbits
           self.write(Slice::new(self.bytes)[:nbytes])
-          if not(self.err is None) {
+          if !(self.err is None) {
             return
           }
           nbytes = 0
@@ -661,7 +661,7 @@ fn HuffmanBitWriter::write_tokens(
           self.bits = bits
           self.nbits = nbits
           self.write(Slice::new(self.bytes)[:nbytes])
-          if not(self.err is None) {
+          if !(self.err is None) {
             return
           }
           nbytes = 0
@@ -687,7 +687,7 @@ fn HuffmanBitWriter::write_tokens(
           self.bits = bits
           self.nbits = nbits
           self.write(Slice::new(self.bytes)[:nbytes])
-          if not(self.err is None) {
+          if !(self.err is None) {
             return
           }
           nbytes = 0
@@ -718,7 +718,7 @@ fn HuffmanBitWriter::write_tokens(
         self.bits = bits
         self.nbits = nbits
         self.write(Slice::new(self.bytes)[:nbytes])
-        if not(self.err is None) {
+        if !(self.err is None) {
           return
         }
         nbytes = 0
@@ -740,7 +740,7 @@ fn HuffmanBitWriter::write_block_huff(
   eof : Bool,
   input : Slice[Byte],
 ) -> Unit {
-  if not(self.err is None) {
+  if !(self.err is None) {
     return
   }
 
@@ -812,7 +812,7 @@ fn HuffmanBitWriter::write_block_huff(
     self.bits = bits
     self.nbits = nbits
     self.write(Slice::new(self.bytes)[:n])
-    if not(self.err is None) {
+    if !(self.err is None) {
       return // Return early in the event of write failures
     }
     n = 0

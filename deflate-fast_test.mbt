@@ -67,7 +67,7 @@ test "TestBestSpeed" {
         guard err is None else {
           abort("test #\{i}: w.write(): unexpected error: \{err}")
         }
-        // if not(flush) {
+        // if !(flush) {
         // continue
         // }
         // w.flush!()

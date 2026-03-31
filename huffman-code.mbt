@@ -76,7 +76,7 @@ fn HCode::set(self : HCode, code : UInt, length : UInt) -> Unit {
 
 ///|
 fn max_node() -> LiteralNode {
-  { literal: @uint.max_value, freq: @int.max_value }
+  { literal: @uint.MAX_VALUE, freq: @int.MAX_VALUE }
 }
 
 ///|
@@ -160,7 +160,7 @@ fn HuffmanEncoder::bit_counts(
     }
     leaf_counts[level][level] = 2
     if level == 1 {
-      levels[level].next_pair_freq = @int.max_value
+      levels[level].next_pair_freq = @int.MAX_VALUE
     }
   }
 
@@ -170,14 +170,14 @@ fn HuffmanEncoder::bit_counts(
   //
   let mut level = max_bits
   for ;; {
-    if levels[level].next_pair_freq == @int.max_value &&
-      levels[level].next_char_freq == @int.max_value {
+    if levels[level].next_pair_freq == @int.MAX_VALUE &&
+      levels[level].next_char_freq == @int.MAX_VALUE {
       // We've run out of both leafs and pairs.
       // End all calculations for this level.
       // To make sure we never come back to this level or any lower level,
       // set next_pair_freq impossibly large.
       levels[level].needed = 0
-      levels[level + 1].next_pair_freq = @int.max_value
+      levels[level + 1].next_pair_freq = @int.MAX_VALUE
       level += 1
       continue
     }

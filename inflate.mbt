@@ -158,7 +158,7 @@ fn HuffmanDecoder::initialize(
   // Exception: To be compatible with zlib, we also need to
   // accept degenerate single-code codings. See also
   // TestDegenerateHuffmanCoding.
-  if code != 1 << max && not(code == 1 && max == 1) {
+  if code != 1 << max && !(code == 1 && max == 1) {
     return false
   }
 
@@ -464,7 +464,7 @@ fn Decompressor::read_huffman(self : Decompressor) -> IOError? {
   for i = nclen; i < code_order.length(); i = i + 1 {
     self.codebits[code_order[i]] = 0
   }
-  if not(self.h1.initialize(Slice::new(self.codebits))) {
+  if !self.h1.initialize(Slice::new(self.codebits)) {
     return Some(corrupt_input_error(self.roffset))
   }
 
@@ -530,8 +530,8 @@ fn Decompressor::read_huffman(self : Decompressor) -> IOError? {
   }
 
   //
-  if not(self.h1.initialize(Slice::new(self.bits)[0:nlit])) ||
-    not(self.h2.initialize(Slice::new(self.bits)[nlit:nlit + ndist])) {
+  if !self.h1.initialize(Slice::new(self.bits)[0:nlit]) ||
+    !self.h2.initialize(Slice::new(self.bits)[nlit:nlit + ndist]) {
     return Some(corrupt_input_error(self.roffset))
   }
 

@@ -52,7 +52,7 @@ let max_store_block_size = 65535
 // buffer to not risk overflowing the Int.
 
 ///|
-let buffer_reset : Int = @int.max_value - max_store_block_size * 2
+let buffer_reset : Int = @int.MAX_VALUE - max_store_block_size * 2
 
 ///|
 fn load32(b : Slice[Byte], i : Int) -> UInt {
