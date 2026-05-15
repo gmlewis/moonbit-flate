@@ -60,12 +60,14 @@ test "TestBestSpeed" {
         let (_, err) = want.write_bytes(subset)
         guard err is None else {
           abort(
-            "test #\{i}: want.write_bytes(subset): unexpected error: \{err}",
+            "test #\{i}: want.write_bytes(subset): unexpected error: \{err.unwrap().to_repr()}",
           )
         }
         let (_, err) = w.write(@io.Slice::new(subset.to_array()))
         guard err is None else {
-          abort("test #\{i}: w.write(): unexpected error: \{err}")
+          abort(
+            "test #\{i}: w.write(): unexpected error: \{err.unwrap().to_repr()}",
+          )
         }
         // if !(flush) {
         // continue
@@ -75,14 +77,18 @@ test "TestBestSpeed" {
       let want = want.to_bytes()
       let err = w.close()
       guard err is None else {
-        abort("test #\{i}: w.close(): unexpected error: \{err}")
+        abort(
+          "test #\{i}: w.close(): unexpected error: \{err.unwrap().to_repr()}",
+        )
       }
 
       //
       let got = @io.Buffer::new()
       let r : &@io.ReadCloser = &@flate.Reader::new(buf)
       let (_, err) = @io.copy(got, r)
-      guard err is None else { abort("test #\{i}: @io.copy: \{err}") }
+      guard err is None else {
+        abort("test #\{i}: @io.copy: \{err.unwrap().to_repr()}")
+      }
       try {
         let got = got.to_bytes()
         assert_eq(got, want)

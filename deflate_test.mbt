@@ -9,21 +9,6 @@
 using @io {type Slice}
 
 ///|
-suberror TestError {
-  TestError(String)
-}
-
-///|
-pub impl Show for TestError with output(self, logger) {
-  let TestError(msg) = self
-  logger.write_string(
-    (
-      $|TestError(\{msg.escape(quote=true)})
-    ),
-  )
-}
-
-///|
 test "writer dict" {
   let dict = Slice::new(b"hello world".to_array())
   let text = Slice::new(b"hello again world".to_array())
@@ -46,7 +31,5 @@ test "writer dict" {
   //
   let got = b1.to_bytes().to_array()
   assert_eq(38, got.length())
-  if got != want {
-    raise TestError("writer wrote \{got} want \{want}")
-  }
+  @debug.assert_eq(got, want)
 }

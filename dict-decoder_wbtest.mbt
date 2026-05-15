@@ -244,11 +244,11 @@ test "DictDecoder" {
   let mut str = poem
   for pref in poem_refs {
     if pref.0 == 0 {
-      write_string(str[:pref.1].to_string())
+      write_string(str[:pref.1].to_owned())
     } else {
       write_copy(pref.0, pref.1)
     }
-    str = str[pref.1:].to_string()
+    str = str[pref.1:].to_owned()
   }
 
   //
