@@ -208,8 +208,8 @@ test "DictDecoder" {
     (108, 3),
     (0, 2),
   ]
-  let got = @buffer.new()
-  let want = @buffer.new()
+  let got = Buffer()
+  let want = Buffer()
   let dd = DictDecoder::new(1 << 11, Slice::new([]))
   let write_copy = fn(dist, length) {
     let mut length = length
@@ -238,7 +238,7 @@ test "DictDecoder" {
 
   //
   write_string(".")
-  want.write_char('.')
+  want.write_char_utf16le('.')
 
   //
   let mut str = poem
@@ -252,34 +252,36 @@ test "DictDecoder" {
   }
 
   //
-  want.write_string(poem)
+  want.write_string_utf16le(poem)
   write_copy(dd.hist_size(), 33)
-  want.write_view(want.contents().to_unchecked_string()[0:33])
+  want.write_string_utf16le(want.contents().to_unchecked_string()[0:33])
 
   //
   write_string(abc)
   write_copy(abc.length(), 59 * abc.length())
-  want.write_string(abc.repeat(60))
+  want.write_string_utf16le(abc.repeat(60))
 
   //
   write_string(fox)
   write_copy(fox.length(), 9 * fox.length())
-  want.write_string(fox.repeat(10))
+  want.write_string_utf16le(fox.repeat(10))
 
   //
   write_string(".")
   write_copy(1, 9)
-  want.write_string(".".repeat(10))
+  want.write_string_utf16le(".".repeat(10))
 
   //
   write_string(poem.to_upper())
   write_copy(poem.length(), 7 * poem.length())
-  want.write_string(poem.to_upper().repeat(8))
+  want.write_string_utf16le(poem.to_upper().repeat(8))
 
   //
   write_copy(dd.hist_size(), 10)
   let to_drop = want.contents().to_unchecked_string().length() - dd.hist_size()
-  want.write_view(want.contents().to_unchecked_string()[to_drop:to_drop + 10])
+  want.write_string_utf16le(
+    want.contents().to_unchecked_string()[to_drop:to_drop + 10],
+  )
 
   //
   got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
@@ -294,9 +296,9 @@ test "DictDecoder" {
 /// `bytes2str` decodes a UTF-8 `Bytes` to a UTF-16 `String`.
 fn bytes2str(b : Bytes) -> String {
   let chars = (b.iter() |> @decoder.utf8()).collect()
-  let buf = @buffer.new(size_hint=chars.length())
+  let buf = Buffer(size_hint=chars.length())
   for ch in chars {
-    buf.write_char(ch)
+    buf.write_char_utf16le(ch)
   }
   buf.contents().to_unchecked_string()
 }

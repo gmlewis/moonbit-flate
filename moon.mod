@@ -1,0 +1,17 @@
+name = "gmlewis/flate"
+
+version = "0.36.8"
+
+import {
+  "gmlewis/io@0.23.11",
+}
+
+readme = "README.md"
+
+repository = "https://github.com/gmlewis/moonbit-flate"
+
+license = "Apache-2.0"
+
+keywords = [ "flate", "algorithm", "lzw", "moonbit" ]
+
+description = "MoonBit flate: provide simplified flate (LZW) compression algorithm."
