@@ -63,7 +63,7 @@ test "TestBestSpeed" {
             "test #\{i}: want.write_bytes(subset): unexpected error: \{err.unwrap().to_repr()}",
           )
         }
-        let (_, err) = w.write(@io.Slice::new(subset.to_array()))
+        let (_, err) = @io.Writer::write(w, @io.Slice::new(subset.to_array()))
         guard err is None else {
           abort(
             "test #\{i}: w.write(): unexpected error: \{err.unwrap().to_repr()}",
@@ -75,7 +75,7 @@ test "TestBestSpeed" {
         // w.flush!()
       }
       let want = want.to_bytes()
-      let err = w.close()
+      let err = @io.Closer::close(w)
       guard err is None else {
         abort(
           "test #\{i}: w.close(): unexpected error: \{err.unwrap().to_repr()}",
