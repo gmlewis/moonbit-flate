@@ -42,4 +42,3 @@ pub fn &Reader::new(Self) -> Decompressor
 pub fn &Reader::new_dict(Self, @io.Slice[Byte]) -> Decompressor
 pub impl @io.ByteReader for &Reader
 pub impl @io.Reader for &Reader
-
