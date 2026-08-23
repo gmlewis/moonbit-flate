@@ -1,9 +1,9 @@
 name = "gmlewis/flate"
 
-version = "0.36.11"
+version = "0.36.12"
 
 import {
-  "gmlewis/io@0.23.14",
+  "gmlewis/io@0.23.15",
 }
 
 readme = "README.md"
