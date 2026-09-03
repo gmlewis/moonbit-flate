@@ -88,7 +88,7 @@ priv struct HuffmanDecoder {
 ///|
 fn HuffmanDecoder::new() -> HuffmanDecoder {
   let chunks = Array::make(huffman_num_chunks.reinterpret_as_int(), 0U)
-  { min: 0, chunks, links: [], link_mask: 0 }
+  { min: 0, chunks, links: [], link_mask: 0, }
 }
 
 ///|
