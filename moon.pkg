@@ -1,12 +1,14 @@
 import {
   "gmlewis/io",
-  "moonbitlang/core/buffer",
   "moonbitlang/core/builtin",
   "moonbitlang/core/cmp",
-  "moonbitlang/core/debug",
   "moonbitlang/core/int",
   "moonbitlang/core/uint",
 }
+
+import {
+  "moonbitlang/core/debug",
+} for "test"
 
 import {
   "gmlewis/flate/decoder",

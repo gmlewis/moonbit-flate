@@ -258,7 +258,7 @@ fn Compressor::enc_speed(self : Compressor) -> Unit {
   }
   // Encode the block.
   self.tokens = self.best_speed.encode(
-    Array::new(capacity=self.window_end),
+    Array(capacity=self.window_end),
     self.window[:self.window_end],
   )
 
