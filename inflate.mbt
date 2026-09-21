@@ -379,6 +379,9 @@ fn Decompressor::next_block(self : Decompressor) -> Unit {
 }
 
 ///|
+pub extend Decompressor with @io.Reader::{read}
+
+///|
 pub impl @io.Reader for Decompressor with fn read(self, b) {
   for ;; {
     if self.to_read.length() > 0 {
@@ -405,6 +408,9 @@ pub impl @io.Reader for Decompressor with fn read(self, b) {
     }
   }
 }
+
+///|
+pub extend Decompressor with @io.Closer::{close}
 
 ///|
 pub impl @io.Closer for Decompressor with fn close(self) {

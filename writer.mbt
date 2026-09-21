@@ -36,15 +36,24 @@ struct DictWriter {
 }
 
 ///|
+pub extend DictWriter with @io.Writer::{write}
+
+///|
 pub impl @io.Writer for DictWriter with fn write(self, b) {
   self.w.write(b)
 }
+
+///|
+pub extend Writer with @io.Writer::{write}
 
 ///|
 /// `write` writes the provided data to the flate Writer.
 pub impl @io.Writer for Writer with fn write(self, data) {
   self.d.write(data)
 }
+
+///|
+pub extend Writer with @io.Closer::{close}
 
 ///|
 /// `close` closes the input to the flate Writer.
