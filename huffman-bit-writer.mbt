@@ -41,12 +41,12 @@ let buffer_flush_size = 240
 // which can contain up to 8 bytes.
 
 ///|
-let buffer_size : Int = buffer_flush_size + 8
+let buffer_size : Int32 = buffer_flush_size + 8
 
 // The number of extra bits needed by length code X - LENGTH_CODES_START.
 
 ///|
-let length_extra_bits : Array[Int] = [
+let length_extra_bits : Array[Int32] = [
   0, 0, 0, // /* 257 */
    0, 0, 0, 0, 0, 1, 1, 1, 1, 2, // /* 260 */
    2, 2, 2, 3, 3, 3, 3, 4, 4, 4, // /* 270 */
@@ -56,7 +56,7 @@ let length_extra_bits : Array[Int] = [
 // The length indicated by length code X - LENGTH_CODES_START.
 
 ///|
-let length_base : Array[UInt] = [
+let length_base : Array[UInt32] = [
   0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80,
   96, 112, 128, 160, 192, 224, 255,
 ]
@@ -64,13 +64,13 @@ let length_base : Array[UInt] = [
 // offset code word extra bits.
 
 ///|
-let offset_extra_bits : Array[Int] = [
+let offset_extra_bits : Array[Int32] = [
   0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
   12, 12, 13, 13,
 ]
 
 ///|
-let offset_base : Array[UInt] = [
+let offset_base : Array[UInt32] = [
   0x000000, 0x000001, 0x000002, 0x000003, 0x000004, 0x000006, 0x000008, 0x00000c,
   0x000010, 0x000018, 0x000020, 0x000030, 0x000040, 0x000060, 0x000080, 0x0000c0,
   0x000100, 0x000180, 0x000200, 0x000300, 0x000400, 0x000600, 0x000800, 0x000c00,
@@ -80,7 +80,7 @@ let offset_base : Array[UInt] = [
 // The odd order in which the codegen code sizes are written.
 
 ///|
-let codegen_order : Array[Int] = [
+let codegen_order : Array[Int32] = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
@@ -95,12 +95,12 @@ priv struct HuffmanBitWriter {
   // and then the low nbits of bits.  Data is always written
   // sequentially into the bytes array.
   mut bits : UInt64
-  mut nbits : UInt
+  mut nbits : UInt32
   bytes : Array[Byte] // [buffer_size]byte
-  codegen_freq : Array[Int] // [codegen_code_count]int32
-  mut nbytes : Int
-  literal_freq : Array[Int]
-  offset_freq : Array[Int]
+  codegen_freq : Array[Int32] // [codegen_code_count]int32
+  mut nbytes : Int32
+  literal_freq : Array[Int32]
+  offset_freq : Array[Int32]
   codegen : FixedArray[Byte]
   literal_encoding : HuffmanEncoder
   offset_encoding : HuffmanEncoder
@@ -169,8 +169,8 @@ fn HuffmanBitWriter::write(self : HuffmanBitWriter, b : Slice[Byte]) -> Unit {
 ///|
 fn HuffmanBitWriter::write_bits(
   self : HuffmanBitWriter,
-  b : Int,
-  nb : UInt,
+  b : Int32,
+  nb : UInt32,
 ) -> Unit {
   if !(self.err is None) {
     return
@@ -240,8 +240,8 @@ fn HuffmanBitWriter::write_bytes(
 ///|
 fn HuffmanBitWriter::generate_codegen(
   self : HuffmanBitWriter,
-  num_literals : Int,
-  num_offsets : Int,
+  num_literals : Int32,
+  num_offsets : Int32,
   lit_enc : HuffmanEncoder,
   off_enc : HuffmanEncoder,
 ) -> Unit {
@@ -336,8 +336,8 @@ fn HuffmanBitWriter::dynamic_size(
   self : HuffmanBitWriter,
   lit_enc : HuffmanEncoder,
   off_enc : HuffmanEncoder,
-  extra_bits : Int,
-) -> (Int, Int) {
+  extra_bits : Int32,
+) -> (Int32, Int32) {
   let mut num_codegens = self.codegen_freq.length()
   while num_codegens > 4 &&
         self.codegen_freq[codegen_order[num_codegens - 1]] == 0 {
@@ -372,7 +372,7 @@ fn HuffmanBitWriter::dynamic_size(
 // stored_size calculates the stored size, including header.
 // The function returns the size in bits and whether the block
 // fits inside a single block.
-fn stored_size(inp_length : Int) -> (Int, Bool) {
+fn stored_size(inp_length : Int32) -> (Int32, Bool) {
   if inp_length == 0 {
     return (0, false)
   }
@@ -420,9 +420,9 @@ fn HuffmanBitWriter::write_code(self : HuffmanBitWriter, c : HCode) -> Unit {
 ///|
 fn HuffmanBitWriter::write_dynamic_header(
   self : HuffmanBitWriter,
-  num_literals : Int,
-  num_offsets : Int,
-  num_codegens : Int,
+  num_literals : Int32,
+  num_offsets : Int32,
+  num_codegens : Int32,
   is_eof : Bool,
 ) -> Unit {
   if !(self.err is None) {
@@ -473,7 +473,7 @@ fn HuffmanBitWriter::write_dynamic_header(
 ///|
 fn HuffmanBitWriter::write_stored_header(
   self : HuffmanBitWriter,
-  length : Int,
+  length : Int32,
   is_eof : Bool,
 ) -> Unit {
   if !(self.err is None) {
@@ -550,7 +550,7 @@ fn HuffmanBitWriter::write_block_dynamic(
 fn HuffmanBitWriter::index_tokens(
   self : HuffmanBitWriter,
   tokens : Array[Token],
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   for i in 0..<self.literal_freq.length() {
     self.literal_freq[i] = 0
   }
@@ -828,7 +828,7 @@ fn HuffmanBitWriter::write_block_huff(
 // len(h) must be >= 256, and h's elements must be all zeroes.
 
 ///|
-fn histogram(b : Slice[Byte], h : Array[Int]) -> Unit {
+fn histogram(b : Slice[Byte], h : Array[Int32]) -> Unit {
   for i in 0..<b.length() {
     let t = b[i].to_int()
     h[t] += 1

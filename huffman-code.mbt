@@ -9,11 +9,11 @@
 priv struct HuffmanEncoder {
   codes : Array[HCode]
   mut freqcache : Array[LiteralNode]
-  bit_count : Array[Int] // [17]Int
+  bit_count : Array[Int32] // [17]Int
 }
 
 ///|
-fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
+fn HuffmanEncoder::new(size : Int32) -> HuffmanEncoder {
   let codes = Array::make(size, { code: 0U, len: 0U, })
   // Is this a MoonBit bug? Need to make unique arrays or else they will
   // all refer to the same one.
@@ -27,16 +27,16 @@ fn HuffmanEncoder::new(size : Int) -> HuffmanEncoder {
 
 ///|
 priv struct LiteralNode {
-  literal : UInt // uint16
-  freq : Int
+  literal : UInt32 // uint16
+  freq : Int32
 }
 
 // HCode is a huffman code with a bit code and bit length.
 
 ///|
 priv struct HCode {
-  mut code : UInt
-  mut len : UInt
+  mut code : UInt32
+  mut len : UInt32
 }
 
 // A levelInfo describes the state of the constructed tree for a given depth.
@@ -44,21 +44,21 @@ priv struct HCode {
 ///|
 priv struct LevelInfo {
   // Our level.  for better printing
-  level : Int
+  level : Int32
 
   // The frequency of the last node at this level
-  mut last_freq : Int
+  mut last_freq : Int32
 
   // The frequency of the next character to add to this level
-  mut next_char_freq : Int
+  mut next_char_freq : Int32
 
   // The frequency of the next pair (from level below) to add to this level.
   // Only valid if the "needed" value of the next lower level is 0.
-  mut next_pair_freq : Int
+  mut next_pair_freq : Int32
 
   // The number of chains remaining to generate for this level before moving
   // up to the next level
-  mut needed : Int
+  mut needed : Int32
 }
 
 ///|
@@ -69,7 +69,7 @@ fn LevelInfo::new() -> LevelInfo {
 // set sets the code and length of an hcode.
 
 ///|
-fn HCode::set(self : HCode, code : UInt, length : UInt) -> Unit {
+fn HCode::set(self : HCode, code : UInt32, length : UInt32) -> Unit {
   self.len = length
   self.code = code
 }
@@ -80,7 +80,10 @@ fn max_node() -> LiteralNode {
 }
 
 ///|
-fn HuffmanEncoder::bit_length(self : HuffmanEncoder, freq : Slice[Int]) -> Int {
+fn HuffmanEncoder::bit_length(
+  self : HuffmanEncoder,
+  freq : Slice[Int32],
+) -> Int32 {
   let mut total = 0
   for i, f in freq {
     if f != 0 {
@@ -112,8 +115,8 @@ let max_bits_limit = 16
 fn HuffmanEncoder::bit_counts(
   self : HuffmanEncoder,
   list : Slice[LiteralNode],
-  max_bits : Int,
-) -> Slice[Int] {
+  max_bits : Int32,
+) -> Slice[Int32] {
   if max_bits >= max_bits_limit {
     abort("flate: max_bits too large")
   }
@@ -249,7 +252,7 @@ fn HuffmanEncoder::bit_counts(
 ///|
 fn HuffmanEncoder::assign_encoding_and_size(
   self : HuffmanEncoder,
-  bit_count : Slice[Int],
+  bit_count : Slice[Int32],
   list : Slice[LiteralNode],
 ) -> Unit {
   let mut list = list
@@ -280,7 +283,7 @@ fn HuffmanEncoder::assign_encoding_and_size(
 }
 
 ///|
-fn reverse_bits(number : UInt, bit_length : Byte) -> UInt {
+fn reverse_bits(number : UInt32, bit_length : Byte) -> UInt32 {
   let v = reverse16(number << (16 - bit_length.to_int()))
   return v
 }
@@ -294,8 +297,8 @@ test "reverse_bits works" {
 ///|
 fn HuffmanEncoder::generate(
   self : HuffmanEncoder,
-  freq : Slice[Int],
-  max_bits : Int,
+  freq : Slice[Int32],
+  max_bits : Int32,
 ) -> Unit {
   if self.freqcache.length() == 0 {
     // Allocate a reusable buffer with the longest possible frequency table.

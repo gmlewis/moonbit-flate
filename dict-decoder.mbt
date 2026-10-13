@@ -30,8 +30,8 @@ priv struct DictDecoder {
   hist : Slice[Byte] // []byte // Sliding window history
 
   // Invariant: 0 <= rd_pos <= wr_pos <= len(hist)
-  mut wr_pos : Int // Current output position in buffer
-  mut rd_pos : Int // Have emitted hist[:rd_pos] already
+  mut wr_pos : Int32 // Current output position in buffer
+  mut rd_pos : Int32 // Have emitted hist[:rd_pos] already
   mut full : Bool // Has a full window length been written yet?
 }
 
@@ -39,7 +39,7 @@ priv struct DictDecoder {
 /// DictDecoder::new initializes DictDecoder to have a sliding window dictionary of the given
 /// size. If a preset dict is provided, it will initialize the dictionary with
 /// the contents of dict.
-fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
+fn DictDecoder::new(size : Int32, dict : Slice[Byte]) -> DictDecoder {
   let dd = {
     hist: Slice::new(Array::make(size, b'\x00')),
     wr_pos: 0,
@@ -61,7 +61,7 @@ fn DictDecoder::new(size : Int, dict : Slice[Byte]) -> DictDecoder {
 
 ///|
 /// hist_size reports the total amount of historical data in the dictionary.
-fn DictDecoder::hist_size(self : DictDecoder) -> Int {
+fn DictDecoder::hist_size(self : DictDecoder) -> Int32 {
   if self.full {
     return self.hist.length()
   }
@@ -70,13 +70,13 @@ fn DictDecoder::hist_size(self : DictDecoder) -> Int {
 
 ///|
 /// avail_read reports the number of bytes that can be flushed by read_flush.
-fn DictDecoder::avail_read(self : DictDecoder) -> Int {
+fn DictDecoder::avail_read(self : DictDecoder) -> Int32 {
   self.wr_pos - self.rd_pos
 }
 
 ///|
 /// avail_write reports the available amount of output buffer space.
-fn DictDecoder::avail_write(self : DictDecoder) -> Int {
+fn DictDecoder::avail_write(self : DictDecoder) -> Int32 {
   self.hist.length() - self.wr_pos
 }
 
@@ -92,7 +92,7 @@ fn DictDecoder::write_slice(self : DictDecoder) -> Slice[Byte] {
 /// write_mark advances the writer pointer by cnt.
 ///
 /// This invariant must be kept: 0 <= cnt <= avail_write()
-fn DictDecoder::write_mark(self : DictDecoder, cnt : Int) -> Unit {
+fn DictDecoder::write_mark(self : DictDecoder, cnt : Int32) -> Unit {
   self.wr_pos += cnt
 }
 
@@ -111,7 +111,11 @@ fn DictDecoder::write_byte(self : DictDecoder, c : Byte) -> Unit {
 /// length if the available space in the output buffer is too small.
 ///
 /// This invariant must be kept: 0 < dist <= hist_size()
-fn DictDecoder::write_copy(self : DictDecoder, dist : Int, length : Int) -> Int {
+fn DictDecoder::write_copy(
+  self : DictDecoder,
+  dist : Int32,
+  length : Int32,
+) -> Int32 {
   let dst_base = self.wr_pos
   let mut dst_pos = dst_base
   let mut src_pos = dst_pos - dist
@@ -162,9 +166,9 @@ fn DictDecoder::write_copy(self : DictDecoder, dist : Int, length : Int) -> Int 
 /// This invariant must be kept: 0 < dist <= hist_size()
 fn DictDecoder::try_write_copy(
   self : DictDecoder,
-  dist : Int,
-  length : Int,
-) -> Int {
+  dist : Int32,
+  length : Int32,
+) -> Int32 {
   let mut dst_pos = self.wr_pos
   let end_pos = dst_pos + length
   if dst_pos < dist || end_pos > self.hist.length() {
@@ -185,7 +189,7 @@ fn DictDecoder::try_write_copy(
 }
 
 ///|
-fn slice_copy(dst : Slice[Byte], src : Slice[Byte]) -> Int {
+fn slice_copy(dst : Slice[Byte], src : Slice[Byte]) -> Int32 {
   let n = @cmp.minimum(dst.length(), src.length())
   for i = 0; i < n; i = i + 1 {
     dst[i] = src[i]

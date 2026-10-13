@@ -1,11 +1,11 @@
 ///|
 fn[T] partition(
   a : Slice[T],
-  first : Int,
-  last : Int,
-  pivot_index : Int,
+  first : Int32,
+  last : Int32,
+  pivot_index : Int32,
   less : (T, T) -> Bool,
-) -> Int {
+) -> Int32 {
   a.swap(first, pivot_index) // move it to beginning
   let mut left = first + 1
   let mut right = last
@@ -29,8 +29,8 @@ fn[T] partition(
 ///|
 fn[T] quicksort_helper(
   a : Slice[T],
-  first : Int,
-  last : Int,
+  first : Int32,
+  last : Int32,
   less : (T, T) -> Bool,
 ) -> Unit {
   if first >= last {
@@ -47,7 +47,7 @@ fn[T] quicksort(a : Slice[T], less : (T, T) -> Bool) -> Unit {
 }
 
 ///|
-fn minimum(x : Int, y : Int) -> Int {
+fn minimum(x : Int32, y : Int32) -> Int32 {
   if x > y {
     y
   } else {

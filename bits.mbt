@@ -15,7 +15,7 @@ fn reverse8(x : Byte) -> Byte {
 // reverse16 returns the value of x with its bits in reversed order.
 
 ///|
-fn reverse16(x : UInt) -> UInt {
+fn reverse16(x : UInt32) -> UInt32 {
   return rev8tab[((x & 0xff00) >> 8).reinterpret_as_int()] |
     (rev8tab[(x & 0xff).reinterpret_as_int()] << 8)
 }
@@ -27,7 +27,7 @@ test "reverse16 works as expected" {
 }
 
 ///|
-let rev8tab : Array[UInt] = [
+let rev8tab : Array[UInt32] = [
   0, 128, 64, 192, 32, 160, 96, 224, 16, 144, 80, 208, 48, 176, 112, 240, 8, 136,
   72, 200, 40, 168, 104, 232, 24, 152, 88, 216, 56, 184, 120, 248, 4, 132, 68, 196,
   36, 164, 100, 228, 20, 148, 84, 212, 52, 180, 116, 244, 12, 140, 76, 204, 44, 172,

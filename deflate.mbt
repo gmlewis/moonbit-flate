@@ -9,10 +9,10 @@
 const LOG_WINDOW_SIZE = 15
 
 ///|
-let window_size : Int = 1 << LOG_WINDOW_SIZE
+let window_size : Int32 = 1 << LOG_WINDOW_SIZE
 
 ///|
-let window_mask : Int = window_size - 1
+let window_mask : Int32 = window_size - 1
 
 // The smallest match length that the compressor actually emits
 
@@ -35,10 +35,10 @@ const MAX_MATCH_LENGTH = 258
 const HASH_BITS = 17 // After 17 performance degrades
 
 ///|
-let hash_size : Int = 1 << HASH_BITS
+let hash_size : Int32 = 1 << HASH_BITS
 
 ///|
-let hash_mask : UInt = (1U << HASH_BITS) - 1
+let hash_mask : UInt32 = (1U << HASH_BITS) - 1
 
 // let max_hash_offset : Int = 1 << 24
 
@@ -55,13 +55,13 @@ priv struct Compressor {
   // hashPrev[hashHead[hashValue] & windowMask] contains the previous index
   // with the same hash value.
   // chain_head : Int
-  hash_head : Slice[UInt] // [hash_size]uint32
-  hash_prev : Slice[UInt] // [window_size]uint32
-  hash_offset : Int
+  hash_head : Slice[UInt32] // [hash_size]uint32
+  hash_prev : Slice[UInt32] // [window_size]uint32
+  hash_offset : Int32
 
   // input window: unprocessed data is window[:window_end]
   window : Slice[Byte]
-  mut window_end : Int
+  mut window_end : Int32
   mut sync : Bool // requesting flush
 
   // queued output tokens
@@ -74,7 +74,7 @@ priv struct Compressor {
   mut err : IOError?
 
   // hash_match must be able to contain hashes for the maximum match length.
-  hash_match : Slice[UInt] //  [maxMatchLength - 1]uint32
+  hash_match : Slice[UInt32] //  [maxMatchLength - 1]uint32
 }
 
 ///|
@@ -202,7 +202,7 @@ const HASHMUL = 0x1e35a7bdU
 // algorithm as hash4.
 
 ///|
-fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt]) -> Unit {
+fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt32]) -> Unit {
   if b.length() < MIN_MATCH_LENGTH {
     return
   }
@@ -219,7 +219,7 @@ fn bulk_hash4(b : Slice[Byte], dst : Slice[UInt]) -> Unit {
 }
 
 ///|
-fn Compressor::fill_store(self : Compressor, b : Slice[Byte]) -> Int {
+fn Compressor::fill_store(self : Compressor, b : Slice[Byte]) -> Int32 {
   let n = minimum(self.window.length() - self.window_end, b.length())
   for i in 0..<n {
     self.window[self.window_end + i] = b[i]
@@ -277,7 +277,7 @@ fn Compressor::enc_speed(self : Compressor) -> Unit {
 }
 
 ///|
-fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int, IOError?) {
+fn Compressor::write(self : Compressor, b : Slice[Byte]) -> (Int32, IOError?) {
   if !(self.err is None) {
     return (0, self.err)
   }

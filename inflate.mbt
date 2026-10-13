@@ -69,7 +69,7 @@ fn internal_error(s : String) -> IOError {
 let huffman_chunk_bits = 9
 
 ///|
-let huffman_num_chunks : UInt = 1U << huffman_chunk_bits
+let huffman_num_chunks : UInt32 = 1U << huffman_chunk_bits
 
 ///|
 let huffman_count_mask = 15U
@@ -79,10 +79,10 @@ let huffman_value_shift = 4
 
 ///|
 priv struct HuffmanDecoder {
-  mut min : Int // the minimum code length
-  mut chunks : Array[UInt] // [huffman_num_chunks]uint32 // chunks as described above
-  mut links : Array[Array[UInt]] // [][]uint32               // overflow links
-  mut link_mask : UInt // mask the width of the link table
+  mut min : Int32 // the minimum code length
+  mut chunks : Array[UInt32] // [huffman_num_chunks]uint32 // chunks as described above
+  mut links : Array[Array[UInt32]] // [][]uint32               // overflow links
+  mut link_mask : UInt32 // mask the width of the link table
 }
 
 ///|
@@ -99,7 +99,7 @@ fn HuffmanDecoder::new() -> HuffmanDecoder {
 /// trees are permitted.
 fn HuffmanDecoder::initialize(
   self : HuffmanDecoder,
-  lengths : Slice[Int],
+  lengths : Slice[Int32],
 ) -> Bool {
 
   // Sanity enables additional runtime tests during Huffman
@@ -226,7 +226,7 @@ fn HuffmanDecoder::initialize(
 /// The actual read interface needed by [Decompressor::new].
 pub(open) trait Reader {
   // @io.Reader
-  fn read(Self, Slice[Byte]) -> (Int, IOError?)
+  fn read(Self, Slice[Byte]) -> (Int32, IOError?)
   // @io.ByteReader
   fn read_byte(Self) -> (Byte, IOError?)
 }
@@ -260,16 +260,16 @@ struct Decompressor {
   mut roffset : Int64
 
   // Input bits, in top of b.
-  mut b : UInt
-  mut nb : UInt
+  mut b : UInt32
+  mut nb : UInt32
 
   // Huffman decoders for literal/length, distance.
   mut h1 : HuffmanDecoder
   mut h2 : HuffmanDecoder
 
   // Length arrays used to define Huffman codes.
-  bits : Array[Int] // *[max_num_lit + max_num_dist]int
-  codebits : Array[Int] // *[num_codes]int
+  bits : Array[Int32] // *[max_num_lit + max_num_dist]int
+  codebits : Array[Int32] // *[num_codes]int
 
   // Output history, buffer.
   mut dict : DictDecoder
@@ -286,8 +286,8 @@ struct Decompressor {
   mut to_read : Slice[Byte] // []byte
   mut hl : HuffmanDecoder?
   mut hd : HuffmanDecoder?
-  mut copy_len : Int
-  mut copy_dist : Int
+  mut copy_len : Int32
+  mut copy_dist : Int32
 }
 
 ///|
@@ -427,7 +427,7 @@ pub impl @io.ReadCloser for Decompressor
 // Compression with dynamic Huffman codes
 
 ///|
-let code_order : ReadOnlyArray[Int] = [
+let code_order : ReadOnlyArray[Int32] = [
   16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
 ]
 
@@ -809,7 +809,7 @@ fn Decompressor::more_bits(self : Decompressor) -> IOError? {
 fn Decompressor::huff_sym(
   self : Decompressor,
   h : HuffmanDecoder,
-) -> (Int, IOError?) {
+) -> (Int32, IOError?) {
   // Since a huffmanDecoder can be empty or be composed of a degenerate tree
   // with single element, huff_sym must error on these two edge cases. In both
   // cases, the chunks slice will be 0 for the invalid sequence, leading it

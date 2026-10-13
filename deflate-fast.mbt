@@ -12,13 +12,13 @@
 let table_bits = 14 // Bits used in the table.
 
 ///|
-let table_size : Int = 1 << table_bits // Size of the table.
+let table_size : Int32 = 1 << table_bits // Size of the table.
 
 ///|
-let table_mask : Int = table_size - 1 // Mask for table indices. Redundant, but can eliminate bounds checks.
+let table_mask : Int32 = table_size - 1 // Mask for table indices. Redundant, but can eliminate bounds checks.
 
 ///|
-let table_shift : Int = 32 - table_bits // Right-shift to get the table_bits most significant bits of a UInt.
+let table_shift : Int32 = 32 - table_bits // Right-shift to get the table_bits most significant bits of a UInt.
 
 // The LZ77 step produces a sequence of literal tokens and <length, offset>
 // pair tokens. The offset is also known as distance. The underlying wire
@@ -37,7 +37,7 @@ let max_match_length = 258 // The largest match length
 let base_match_offset = 1 // The smallest match offset
 
 ///|
-let max_match_offset : Int = 1 << 15 // The largest match offset
+let max_match_offset : Int32 = 1 << 15 // The largest match offset
 
 // The maximum number of tokens we put into a single flate block, just to
 // stop things from getting too large.
@@ -52,10 +52,10 @@ let max_store_block_size = 65535
 // buffer to not risk overflowing the Int.
 
 ///|
-let buffer_reset : Int = @int.MAX_VALUE - max_store_block_size * 2
+let buffer_reset : Int32 = @int.MAX_VALUE - max_store_block_size * 2
 
 ///|
-fn load32(b : Slice[Byte], i : Int) -> UInt {
+fn load32(b : Slice[Byte], i : Int32) -> UInt32 {
   return b[i + 0].to_uint() |
     (b[i + 1].to_uint() << 8) |
     (b[i + 2].to_uint() << 16) |
@@ -63,7 +63,7 @@ fn load32(b : Slice[Byte], i : Int) -> UInt {
 }
 
 ///|
-fn load64(b : Slice[Byte], i : Int) -> UInt64 {
+fn load64(b : Slice[Byte], i : Int32) -> UInt64 {
   return b[i + 0].to_uint().to_uint64() |
     (b[i + 1].to_uint().to_uint64() << 8) |
     (b[i + 2].to_uint().to_uint64() << 16) |
@@ -75,7 +75,7 @@ fn load64(b : Slice[Byte], i : Int) -> UInt64 {
 }
 
 ///|
-fn hash(u : UInt) -> Int { // uint32 - but always used as int below
+fn hash(u : UInt32) -> Int32 { // uint32 - but always used as int below
   let v = (u * 0x1e35a7bd) >> table_shift
   return v.reinterpret_as_int()
 }
@@ -86,15 +86,15 @@ fn hash(u : UInt) -> Int { // uint32 - but always used as int below
 // optimizations, but using the same thresholds doesn't really hurt.
 
 ///|
-let input_margin : Int = 16 - 1
+let input_margin : Int32 = 16 - 1
 
 ///|
-let min_non_literal_block_size : Int = 1 + 1 + input_margin
+let min_non_literal_block_size : Int32 = 1 + 1 + input_margin
 
 ///|
 priv struct TableEntry {
-  val : UInt // Value at destination
-  mut offset : Int
+  val : UInt32 // Value at destination
+  mut offset : Int32
 }
 
 // DeflateFast maintains the table for matches,
@@ -104,7 +104,7 @@ priv struct TableEntry {
 priv struct DeflateFast {
   table : FixedArray[TableEntry] // [table_size]TableEntry
   mut prev : Slice[Byte] // Previous block, zero length if unknown.
-  mut cur : Int // Current match offset.
+  mut cur : Int32 // Current match offset.
 }
 
 ///|
@@ -285,10 +285,10 @@ fn emit_literal(dst : Array[Token], lit : Slice[Byte]) -> Array[Token] {
 ///|
 fn DeflateFast::match_len(
   self : DeflateFast,
-  s : Int,
-  t : Int,
+  s : Int32,
+  t : Int32,
   src : Slice[Byte],
-) -> Int {
+) -> Int32 {
   let mut s1 = s + max_match_length - 4
   if s1 > src.length() {
     s1 = src.length()

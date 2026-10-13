@@ -28,7 +28,7 @@ test "utf8" {
     {
       name: "overlong",
       input: [0xc0, 0x80],
-      expected: [Int::unsafe_to_char(0)],
+      expected: [Int32::unsafe_to_char(0)],
     },
     {
       name: "mixed_valid",

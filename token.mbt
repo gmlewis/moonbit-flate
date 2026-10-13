@@ -13,21 +13,21 @@
 let length_shift = 22
 
 ///|
-let offset_mask : UInt = (1U << length_shift) - 1
+let offset_mask : UInt32 = (1U << length_shift) - 1
 
 // let type_mask : Int = 3 << 30
 
 ///|
-let literal_type : UInt = 0U << 30
+let literal_type : UInt32 = 0U << 30
 
 ///|
-let match_type : UInt = 1U << 30
+let match_type : UInt32 = 1U << 30
 
 // The length code for length X (MIN_MATCH_LENGTH <= X <= MAX_MATCH_LENGTH)
 // is length_codes[length - MIN_MATCH_LENGTH]
 
 ///|
-let length_codes : Array[Int] = [ // Array[UInt] // Values are always used for indexing, so make them Int
+let length_codes : Array[Int32] = [ // Array[UInt] // Values are always used for indexing, so make them Int
   0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 12, 13, 13, 13,
   13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 17, 17, 17,
   17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19,
@@ -44,7 +44,7 @@ let length_codes : Array[Int] = [ // Array[UInt] // Values are always used for i
 ]
 
 ///|
-let offset_codes : Array[Int] = [ // Array[UInt] // Values are always used for indexing, so make them Int
+let offset_codes : Array[Int32] = [ // Array[UInt] // Values are always used for indexing, so make them Int
   0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9,
   9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
   11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12,
@@ -61,33 +61,33 @@ let offset_codes : Array[Int] = [ // Array[UInt] // Values are always used for i
 ]
 
 ///|
-priv struct Token(UInt)
+priv struct Token(UInt32)
 
 // Convert a literal into a literal token.
 
 ///|
-fn literal_token(literal : UInt) -> Token {
+fn literal_token(literal : UInt32) -> Token {
   literal_type + literal
 }
 
 // Convert a < xlength, xoffset > pair into a match token.
 
 ///|
-fn match_token(xlength : UInt, xoffset : UInt) -> Token {
+fn match_token(xlength : UInt32, xoffset : UInt32) -> Token {
   match_type + (xlength << length_shift) + xoffset
 }
 
 // Returns the literal of a literal token.
 
 ///|
-fn Token::literal(self : Token) -> UInt {
+fn Token::literal(self : Token) -> UInt32 {
   self.0 - literal_type
 }
 
 // Returns the extra offset of a match token.
 
 ///|
-fn Token::offset(self : Token) -> UInt {
+fn Token::offset(self : Token) -> UInt32 {
   self.0 & offset_mask
 }
 
@@ -99,17 +99,17 @@ test "offset behaves correctly" {
 }
 
 ///|
-fn Token::length(self : Token) -> UInt {
+fn Token::length(self : Token) -> UInt32 {
   (self.0 - match_type) >> length_shift
 }
 
 ///|
-fn length_code(len : UInt) -> Int { // -> UInt // Values are always used for indexing, so make them Int
+fn length_code(len : UInt32) -> Int32 { // -> UInt // Values are always used for indexing, so make them Int
   length_codes[len.reinterpret_as_int()]
 }
 
 ///|
-fn offset_code(off : UInt) -> Int { // -> UInt // Values are always used for indexing, so make them Int
+fn offset_code(off : UInt32) -> Int32 { // -> UInt // Values are always used for indexing, so make them Int
   if off < offset_codes.length().reinterpret_as_uint() {
     let idx = off.reinterpret_as_int()
     return offset_codes[idx]
