@@ -16,21 +16,21 @@ pub let writer_closed_error : @io.IOError
 type Decompressor
 pub fn Decompressor::close(Self) -> @io.IOError?
 pub fn Decompressor::make_reader(Self, &Reader) -> Unit
-pub fn Decompressor::read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
+pub fn Decompressor::read(Self, @io.Slice[Byte]) -> (Int32, @io.IOError?)
 pub fn Decompressor::reset(Self, &Reader, @io.Slice[Byte]) -> Unit
 pub impl @io.Closer for Decompressor
 pub impl @io.ReadCloser for Decompressor
 pub impl @io.Reader for Decompressor
 
 type DictWriter
-pub fn DictWriter::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
+pub fn DictWriter::write(Self, @io.Slice[Byte]) -> (Int32, @io.IOError?)
 pub impl @io.Writer for DictWriter
 
 type Writer
 pub fn Writer::close(Self) -> @io.IOError?
 pub fn Writer::new(&@io.Writer) -> Self
 pub fn Writer::new_dict(&@io.Writer, @io.Slice[Byte]) -> Self
-pub fn Writer::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
+pub fn Writer::write(Self, @io.Slice[Byte]) -> (Int32, @io.IOError?)
 pub impl @io.Closer for Writer
 pub impl @io.WriteCloser for Writer
 pub impl @io.Writer for Writer
@@ -39,7 +39,7 @@ pub impl @io.Writer for Writer
 
 // Traits
 pub(open) trait Reader {
-  fn read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
+  fn read(Self, @io.Slice[Byte]) -> (Int32, @io.IOError?)
   fn read_byte(Self) -> (Byte, @io.IOError?)
 }
 pub impl Reader for @io.Buffer
