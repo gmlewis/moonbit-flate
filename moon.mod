@@ -1,6 +1,6 @@
 name = "gmlewis/flate"
 
-version = "0.36.19"
+version = "0.36.20"
 
 import {
   "gmlewis/io@0.23.22",
