@@ -5,7 +5,7 @@
 pub fn utf8(bytes : Iter[Byte]) -> Iter[Char] {
   let mut len = 0
   let mut char = 0
-  Iter::new(fn() -> Char? {
+  Iter(fn() -> Char? {
     while true {
       guard bytes.next() is Some(byte) else { return None }
       let b = byte.to_int()

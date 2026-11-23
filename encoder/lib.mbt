@@ -5,7 +5,7 @@
 pub fn utf8(string : Iter[Char]) -> Iter[Byte] {
   let buf : Array[Byte] = [0, 0, 0]
   let mut view = buf[0:0]
-  Iter::new(fn() -> Byte? {
+  Iter(fn() -> Byte? {
     if view.length() > 0 {
       let next_byte = view[0]
       view = view[1:view.length()]
