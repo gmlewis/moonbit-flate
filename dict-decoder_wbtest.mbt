@@ -220,7 +220,7 @@ test "DictDecoder" {
       }
       length -= cnt
       if dd.avail_write() == 0 {
-        got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
+        got.write_bytesview(dd.read_flush().to_bytes().clamped_view())
       }
     }
   }
@@ -231,7 +231,7 @@ test "DictDecoder" {
       str = str[cnt:]
       dd.write_mark(cnt)
       if dd.avail_write() == 0 {
-        got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
+        got.write_bytesview(dd.read_flush().to_bytes().clamped_view())
       }
     }
   }
@@ -284,7 +284,7 @@ test "DictDecoder" {
   )
 
   //
-  got.write_bytes(Bytes::from_iter(dd.read_flush().iter()))
+  got.write_bytesview(dd.read_flush().to_bytes().clamped_view())
   let got = bytes2str(got.to_bytes())
   let want = want.contents().to_unchecked_string()
   if got != want {
